@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">亲密记录</string>
+
+    <!-- 底部导航 -->
+    <string name="tab_calendar">行事历</string>
+    <string name="tab_history">历史</string>
+    <string name="tab_stats">统计</string>
+    <string name="tab_partner">伴侣</string>
+    <string name="tab_more">更多</string>
+
+    <!-- 通用 -->
+    <string name="action_save">保存</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_delete">删除</string>
+    <string name="action_add">新增</string>
+    <string name="action_close">关闭</string>
+    <string name="action_edit">编辑</string>
+
+    <!-- 行事历 -->
+    <string name="calendar_title">行事历</string>
+    <string name="calendar_filter">筛选</string>    <string name="calendar_filter_title">筛选行事历活动</string>
+    <string name="calendar_filter_clear">清除</string>
+    <string name="calendar_filter_selected">已选 %1$d/%2$d</string>
+    <string name="calendar_filter_only_solo">自慰</string>
+    <string name="calendar_filter_no_partner">无伴侣</string>
+    <string name="calendar_filtered">已筛选</string>
+    <string name="calendar_days_ago">距上次活动天数</string>
+    <string name="calendar_days_ago_partner">距上次与伴侣活动天数</string>
+    <string name="calendar_last_record">上次记录</string>
+    <string name="calendar_longest_gap">最长间隔</string>
+    <string name="calendar_usual">通常</string>
+    <string name="calendar_no_records">这天没有记录</string>
+    <string name="calendar_records_count">%1$d 条记录</string>
+    <string name="placeholder_calendar">日历与节奏卡将在 S2 实现</string>
+
+    <!-- 历史 -->
+    <string name="history_title">历史</string>
+    <string name="history_tab_activity">活动</string>
+    <string name="history_tab_album">相册</string>
+    <string name="history_empty">还没有记录</string>
+    <string name="album_empty">还没有照片</string>
+    <string name="simplified_hint">在记录表单中隐藏你用不到的栏位</string>
+    <string name="simplified_min">至少要保留 2 个栏位显示</string>
+    <string name="template_pick">选择模板</string>
+    <string name="template_empty">还没有模板</string>
+    <string name="placeholder_history">记录列表与相册将在 S2 实现</string>
+
+    <!-- 统计 -->
+    <string name="stats_title">统计</string>
+    <string name="stats_empty">数据还不够</string>
+    <string name="placeholder_stats">9 个统计页签将在 S3 实现</string>
+
+    <!-- 伴侣 -->
+    <string name="partner_title">伴侣</string>
+    <string name="partner_add">新增伴侣</string>
+    <string name="partner_edit">编辑伴侣</string>
+    <string name="partner_avatar_change">更换头像</string>
+    <string name="partner_avatar_remove">移除头像</string>
+    <string name="partner_name">名称</string>
+    <string name="partner_gender">性别</string>
+    <string name="partner_relationship">关系</string>
+    <string name="partner_notes">备注</string>
+    <string name="partner_empty">还没有伴侣</string>
+    <string name="partner_archive">归档</string>
+    <string name="partner_unarchive">取消归档</string>
+    <string name="partner_archived">已归档</string>
+    <string name="partner_delete_confirm">确定删除「%1$s」？相关记录也会一并移除。</string>
+    <string name="partner_name_required">请输入名称</string>
+
+    <!-- 字典 -->
+    <string name="dict_sex_type">性爱类型</string>
+    <string name="dict_position">姿势</string>
+    <string name="dict_toy">情趣用品</string>
+    <string name="dict_location">地点</string>
+    <string name="dict_yours">你的%1$s</string>
+    <string name="dict_yours_sex_type">你的类型</string>
+    <string name="dict_yours_location">你的地点</string>
+    <string name="dict_yours_position">你的姿势</string>
+    <string name="dict_yours_toy">你的情趣用品</string>
+    <string name="dict_builtin">内置</string>
+    <string name="dict_hint">点一下即可从记录表单中隐藏，不会删除任何数据。</string>
+    <string name="dict_reorder_tip">长按并拖动可调整顺序</string>
+    <string name="dict_empty">还没有内容</string>
+    <string name="dict_name">名称</string>
+    <string name="dict_intensity">强度</string>
+    <string name="dict_delete_confirm">确定删除「%1$s」？</string>
+
+    <!-- 枚举 -->
+    <string name="gender_male">男</string>
+    <string name="gender_female">女</string>
+    <string name="gender_other">其他</string>
+    <string name="gender_unknown">未设置</string>
+    <string name="rel_casual">随性关系</string>    <string name="rel_spouse">配偶</string>
+    <string name="rel_girlfriend">女朋友</string>
+    <string name="rel_lover">情人</string>
+    <string name="rel_friend">朋友</string>
+    <string name="rel_ex">前任</string>
+    <string name="rel_colleague">同事</string>
+    <string name="rel_stranger">陌生人</string>
+    
+    
+    <string name="rel_other">其他</string>
+    <string name="intensity_very_low">非常低</string>
+    <string name="intensity_low">低</string>
+    <string name="intensity_medium">中</string>
+    <string name="intensity_high">高</string>
+    <string name="intensity_very_high">非常高</string>
+
+    <!-- 记录表单 -->
+    <string name="record_new">新增记录</string>
+    <string name="record_edit">编辑记录</string>    <string name="record_detail_edit">修改记录</string>
+    <string name="record_detail_delete">删除记录</string>
+    <string name="record_delete_confirm">删除后无法恢复，确定删除这条记录？</string>
+    <string name="record_icon">记录图标</string>
+    <string name="record_photo">照片</string>
+    <string name="record_date">选择日期</string>
+    <string name="record_duration">时长</string>
+    <string name="record_satisfaction">满意度</string>
+    <string name="record_type">类型</string>
+    <string name="record_protection">防护措施</string>
+    <string name="record_my_orgasm">你的高潮</string>
+    <string name="record_partner_orgasm">伴侣的高潮</string>
+    <string name="record_notes">备注</string>
+    <string name="record_notes_hint">想记下什么…</string>
+    <string name="record_save_template">保存为模板</string>
+    <string name="record_initiator">主动方</string>
+    <string name="record_solo">无 / 单人</string>
+    <string name="record_added">已保存</string>
+    <string name="action_confirm">确定</string>
+    <string name="common_unset">未设置</string>
+    <string name="initiator_me">我</string>
+    <string name="initiator_partner">伴侣</string>
+    <string name="initiator_both">双方</string>
+    <string name="protection_yes">有</string>
+    <string name="protection_no">没有</string>
+    <string name="protection_unknown">不确定</string>
+    <!-- 统计 -->
+    <string name="stats_tab_overview">总览</string>
+    <string name="stats_tab_type">性爱类型</string>
+    <string name="stats_tab_location">地点</string>
+    <string name="stats_tab_position">姿势</string>
+    <string name="stats_tab_toy">情趣用品</string>
+    <string name="stats_tab_initiator">主动方</string>
+    <string name="stats_tab_activity">活动</string>
+    <string name="stats_tab_orgasm">高潮</string>
+    <string name="stats_tab_duration">时长</string>
+    <string name="stats_period">期间</string>
+    <string name="stats_period_all">全部时间</string>
+    <string name="stats_period_year">本年</string>
+    <string name="stats_period_month">本月</string>
+    <string name="stats_partner">伴侣</string>
+    <string name="stats_partner_all">所有伴侣</string>
+    <string name="stats_filled_header">%1$d 条记录中，有 %2$d 条填了这项</string>
+    <string name="stats_percent_hint">一条记录可以有多个选项，所以百分比加起来可能超过 100%。</string>
+    <string name="stats_total">总计：%1$d</string>
+    <string name="stats_weekday">星期活动分布</string>
+    <string name="stats_partner_rank">各伴侣的活动</string>
+    <string name="stats_card_activity">活动</string>
+    <string name="stats_card_partners">伴侣人数</string>
+    <string name="stats_card_solo">自慰</string>
+    <string name="stats_card_satisfaction">平均满意度</string>
+    <string name="stats_card_avg_duration">平均时长</string>
+    <string name="stats_card_total_duration">总时长</string>
+    <string name="stats_card_protection">防护措施</string>
+    <string name="stats_card_orgasm">高潮</string>
+    <string name="stats_card_orgasm_partner">高潮（伴侣）</string>
+    <string name="stats_card_avg_orgasm">平均高潮次数</string>
+    <string name="stats_card_avg_orgasm_partner">平均高潮次数（伴侣）</string>
+    <!-- 更多 -->
+    <string name="more_title">更多</string>
+    <string name="more_browse">浏览</string>
+    <string name="more_app">应用</string>
+    <string name="more_prefs">偏好设置</string>    <string name="prefs_title">偏好设置</string>
+    <string name="prefs_appearance">外观</string>
+    <string name="prefs_theme_color">主题颜色</string>
+    <string name="prefs_preview_hint">拖动下方滑块自由调色</string>
+    <string name="prefs_hue">色相</string>
+    <string name="prefs_saturation">饱和度</string>
+    <string name="prefs_value">明度</string>
+    <string name="prefs_dark_mode">深色模式</string>
+    <string name="prefs_mode_auto">自动</string>
+    <string name="prefs_mode_light">浅色</string>
+    <string name="prefs_mode_dark">深色</string>
+    <string name="prefs_reset">恢复默认</string>
+    <string name="more_simplified">简化输入</string>
+    <string name="more_lock">应用锁</string>
+    <string name="more_webdav">WebDAV 同步</string>
+    <string name="webdav_hint">备份会以 zip 上传到该 WebDAV 的 IntimateTracker 目录，包含数据库与照片。</string>
+    <string name="webdav_retention">日常只维护一份最新快照，另外每天保留一份历史备份，最多 14 份。</string>
+    <string name="more_export">数据导出</string>
+    <string name="more_clear">清空所有数据</string>
+    <string name="more_about">关于</string>
+    <string name="more_version">版本 %1$s</string>
+    <!-- 关于 -->
+    <string name="about_tagline">本地优先的私密记录应用</string>
+    <string name="about_section_data">数据与隐私</string>
+    <string name="about_where_data">你的数据在哪里</string>
+    <string name="about_where_data_sub">全部保存在本机，不上传</string>
+    <string name="about_export_sub">打包数据库与照片到「下载」</string>
+    <string name="about_clear_sub">不可恢复，请谨慎操作</string>
+    <string name="about_section_app">应用</string>
+    <string name="about_version">当前版本</string>
+    <string name="about_version_value">%1$s (%2$d)</string>
+    <string name="about_changelog">更新日志</string>
+    <string name="about_crash">崩溃日志</string>
+    <string name="about_crash_none">暂无</string>
+    <string name="about_crash_count">%1$d 条</string>
+    <string name="about_section_about">关于</string>
+    <string name="about_developer">开发者</string>
+    <string name="about_licenses">开源许可</string>
+    <string name="about_feedback">意见反馈</string>
+    <string name="about_feedback_sub">GitHub Issues</string>
+    <string name="about_feedback_failed">无法打开链接</string>
+    <string name="about_footer">© 2026 JGXH · 数据只保存在你的设备上</string>
+    <string name="about_crash_dialog_title">崩溃日志</string>
+    <string name="about_crash_empty">还没有崩溃记录。</string>
+    <string name="about_crash_copy">复制</string>
+    <string name="about_crash_clear">清空</string>
+    <string name="about_crash_copied">已复制到剪贴板</string>
+    <string name="about_crash_cleared">已清空</string>
+    <string name="about_export_confirm">将数据库与照片打包为 zip，保存到系统“下载/IntimateTracker”。</string>
+    <string name="about_clear_confirm">将删除全部记录、字典与照片，且无法恢复。确定继续？</string>
+    <string name="about_export_action">导出</string>
+    <string name="about_clear_action">清空</string>
+
+    <!-- 隐私说明 -->
+    <string name="privacy_title">数据与隐私</string>
+    <string name="privacy_intro">这是一款本地优先的应用。下面说明数据存在哪里、什么时候会联网，以及如何带走或删除它。</string>
+    <string name="privacy_data_title">数据存放在哪</string>
+    <string name="privacy_data_body">记录、字典、伴侣、照片与设置都保存在应用的私有目录里。没有账号，也不会同步到任何服务器。</string>
+    <string name="privacy_network_title">什么时候联网</string>
+    <string name="privacy_network_body">默认完全离线。只有你在「WebDAV 同步」里填写服务器并手动同步时，应用才会连接该服务器；地址与账号只存在本机，密码加密保存。</string>
+    <string name="privacy_permission_title">权限与第三方</string>
+    <string name="privacy_permission_body">不申请定位、通讯录等权限；照片通过系统选择器读取；未集成广告或统计 SDK。</string>
+    <string name="privacy_crash_title">崩溃日志</string>
+    <string name="privacy_crash_body">崩溃时只在本机写入最多 5 份日志，不上传；可在「关于 → 崩溃日志」查看或清空。</string>
+    <string name="privacy_delete_title">导出与删除</string>
+    <string name="privacy_delete_body">可随时导出 zip（数据库 + 照片），或在「关于」里清空全部数据；清空不可恢复。</string>
+
+    <!-- 开源许可 -->
+    <string name="licenses_title">开源许可</string>
+    <string name="licenses_intro">本应用建立在以下开源项目之上，感谢作者与社区。</string>
+    <string name="licenses_components">开源组件</string>
+    <string name="licenses_note">完整许可证文本见各项目主页；Plus Jakarta Sans 以 SIL Open Font License 1.1 分发。</string>
+
+    <!-- 更新日志 -->
+    <string name="changelog_title">更新日志</string>
+    <string name="changelog_empty">暂无更新日志</string>
+
+    <!-- 自动同步 -->
+    <string name="sync_channel_name">同步</string>
+    <string name="sync_channel_desc">后台 WebDAV 同步</string>
+    <string name="sync_notification_title">正在同步</string>
+    <string name="sync_notification_text">正在上传或合并数据…</string>
+    <string name="webdav_auto_section">自动同步</string>
+    <string name="webdav_auto_enabled">自动同步</string>
+    <string name="webdav_auto_desc">打开 App、定时或修改后自动同步</string>
+    <string name="webdav_auto_interval">同步频率</string>
+    <string name="webdav_interval_15">15 分钟</string>
+    <string name="webdav_interval_60">1 小时</string>
+    <string name="webdav_interval_360">6 小时</string>
+    <string name="webdav_interval_1440">每天</string>
+    <string name="webdav_wifi_only">仅 Wi-Fi 下同步</string>
+    <string name="webdav_charging_only">仅充电时同步</string>
+    <string name="webdav_auto_need_config">请先填写服务器地址和密码</string>
+    <string name="webdav_last_result">上次同步结果：%1$s</string>
+    <string name="webdav_sync_pulled">已从云端合并 %1$d 条</string>
+    <string name="webdav_sync_success">同步完成（合并 %1$d 条）</string>
+    <string name="webdav_sync_nochange">已是最新，无需同步</string>
+    <string name="webdav_sync_failed">同步失败：%1$s</string>
+</resources>

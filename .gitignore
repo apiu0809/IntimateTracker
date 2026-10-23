@@ -1,0 +1,38 @@
+# Android / Gradle
+.gradle/
+build/
+*/build/
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.navigation/
+
+# 签名与密钥
+*.jks
+*.keystore
+keystore.properties
+
+# 本机临时
+.tmp_probe/
+.tmp_shots/
+.tmp_img/
+_recovered.md
+*.log
+
+# 系统
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# 本机 UI 快照
+ui*.xml
+*.xml.tmp
