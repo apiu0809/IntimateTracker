@@ -81,8 +81,8 @@ if (-not $SkipAsset) {
     $hasAsset = $release.assets | Where-Object { $_.name -eq $apkName }
     if (-not $hasAsset) {
         $url = "https://uploads.github.com/repos/$repo/releases/$($release.id)/assets?name=$apkName"
-        # 大文件直传容易被中间链路重置：限速 + 关闭 Expect + 重试，实测 800k 可稳定上传
-        $resp = & curl.exe -sS --http1.1 --retry 3 --retry-delay 3 --limit-rate 800k -H "Expect:" -X POST -H "Authorization: token $env:GH_TMP" -H "Accept: application/vnd.github+json" `
+        # 大文件直传容易被中间链路重置：限速 + 关闭 Expect + 全错误重试（实测 250~800k 都可能被 reset）
+        $resp = & curl.exe -sS --http1.1 --retry 5 --retry-delay 5 --retry-all-errors --limit-rate 400k -H "Expect:" -X POST -H "Authorization: token $env:GH_TMP" -H "Accept: application/vnd.github+json" `
             -H "Content-Type: application/vnd.android.package-archive" --data-binary "@$apkPath" $url
         $uploaded = $resp -match '"state"'
         if (-not $uploaded) {
