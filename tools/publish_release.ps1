@@ -7,7 +7,7 @@
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path $PSScriptRoot -Parent
-$repo = "apiu0809/intimate-tracker"
+$repo = "apiu0809/IntimateTracker"
 $api = "https://api.github.com/repos/$repo"
 $ver = $Version.TrimStart("v")
 

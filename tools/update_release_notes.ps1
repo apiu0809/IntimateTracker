@@ -10,7 +10,7 @@ $token = ($cred | Where-Object { $_ -like "password=*" } | ForEach-Object { $_ -
 if (-not $token) { throw "no github token" }
 
 $headers = @{ Authorization = "token $token"; "User-Agent" = "dsh"; Accept = "application/vnd.github+json" }
-$repo = "apiu0809/intimate-tracker"
+$repo = "apiu0809/IntimateTracker"
 $base = "https://api.github.com/repos/$repo"
 
 # 解析 CHANGELOG.md
