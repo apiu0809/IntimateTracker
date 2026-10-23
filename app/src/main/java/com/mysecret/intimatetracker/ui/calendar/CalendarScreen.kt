@@ -53,6 +53,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -84,6 +85,8 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.floor
 import kotlin.math.roundToInt
 
 private val monthFormatter = DateTimeFormatter.ofPattern("yyyy年M月", Locale.SIMPLIFIED_CHINESE)
@@ -174,18 +177,32 @@ fun CalendarScreen(
                     val cellHeightPx = with(density) { DAY_CELL_HEIGHT.toPx() }
                     var headerHeightPx by remember { mutableFloatStateOf(0f) }
 
+                    // 手势方向要跟「连续位置」的变化量，不能只看 offset 符号：
+                    // 越过翻页中点时 currentPage 会进位、offset 同时变号，只看符号会把目标月份算回上一个，高度就来回抖。
+                    var scrollForward by remember { mutableStateOf<Boolean?>(null) }
+                    LaunchedEffect(pagerState) {
+                        var previous = pagerState.currentPage + pagerState.currentPageOffsetFraction
+                        snapshotFlow { pagerState.currentPage + pagerState.currentPageOffsetFraction }
+                            .collect { position ->
+                                val delta = position - previous
+                                if (abs(delta) > 0.001f) scrollForward = delta > 0f
+                                previous = position
+                            }
+                    }
+
                     val heightPage by remember {
                         derivedStateOf {
                             val current = pagerState.currentPage
                             val target = pagerState.targetPage
-                            val offset = pagerState.currentPageOffsetFraction
+                            val position = current + pagerState.currentPageOffsetFraction
                             val page = when {
                                 !pagerState.isScrollInProgress -> current
-                                // 月份选择器等跨月滚动：直接取终点，免得途中来回跳
+                                // 快速甩动或月份选择器跨多月：直接取终点，免得途经月份反复改高度
                                 abs(target - current) > 1 -> target
-                                abs(offset) < 0.02f -> current
-                                offset > 0f -> current + 1
-                                else -> current - 1
+                                // 朝运动方向取最近的那个整页：拖动中途不会出现过冲的目标
+                                scrollForward == true -> ceil(position).toInt()
+                                scrollForward == false -> floor(position).toInt()
+                                else -> current
                             }
                             page.coerceIn(0, PAGER_PAGES - 1)
                         }
