@@ -242,6 +242,9 @@ fun CalendarScreen(
                         HorizontalPager(
                             state = pagerState,
                             modifier = Modifier.fillMaxWidth(),
+                            // 默认是垂直居中：两页行数不同时，矮的那个月会被居中而下沉半行。
+                            // 统一顶部对齐，月份始终贴住日历顶部，多出来的行只由外层高度补间控制。
+                            verticalAlignment = Alignment.Top,
                         ) { page ->
                             val month = PAGER_START.plusMonths(page.toLong())
                             MonthGrid(

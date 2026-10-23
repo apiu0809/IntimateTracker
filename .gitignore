@@ -24,6 +24,7 @@ keystore.properties
 # 本机临时
 .tmp_probe/
 .tmp_shots/
+.tmp_src/
 .tmp_img/
 _recovered.md
 *.log
