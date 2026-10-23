@@ -21,8 +21,8 @@ android {
         applicationId = "com.mysecret.intimatetracker"
         minSdk = 26
         targetSdk = 36
-        versionCode = 50
-        versionName = "1.5.8"
+        versionCode = 51
+        versionName = "1.5.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
