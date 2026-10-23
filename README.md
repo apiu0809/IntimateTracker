@@ -14,7 +14,7 @@
 | S2 记录表单 + 日历 + 历史 | ✅ |
 | S3 统计 9 页签 | ✅ |
 | S4 WebDAV v2 + 应用锁 + 导出 | ✅ |
-| **当前版本** | **v1.5.5** |
+| **当前版本** | **v1.5.6** |
 
 ## 已实现功能
 
@@ -80,7 +80,7 @@ keyPassword=******
 ## 发布 Release
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools\publish_release.ps1 -Version v1.5.5
+powershell -ExecutionPolicy Bypass -File tools\publish_release.ps1 -Version v1.5.6
 ```
 
 脚本会从 `CHANGELOG.md` 提取对应小节生成 notes，创建或更新 Release，并上传 `releases/IntimateTracker-vX.Y.Z-arm64-v8a.apk`。加 `-Draft` 建草稿，加 `-SkipAsset` 只改说明。
