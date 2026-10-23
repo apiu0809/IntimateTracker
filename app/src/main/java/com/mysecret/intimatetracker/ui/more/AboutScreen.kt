@@ -57,7 +57,8 @@ import com.mysecret.intimatetracker.ui.component.SettingGroupLabel
 import com.mysecret.intimatetracker.ui.component.SettingRow
 import com.mysecret.intimatetracker.ui.component.ScreenScaffold
 
-private const val FEEDBACK_URL = "https://github.com/apiu0809/intimate-tracker/issues"
+private const val DEVELOPER_URL = "https://github.com/apiu0809"
+private const val PROJECT_URL = "https://github.com/apiu0809/IntimateTracker"
 
 @Composable
 fun AboutScreen(
@@ -142,8 +143,10 @@ fun AboutScreen(
             SettingGroupLabel(stringResource(R.string.about_section_about))
             SettingRow(
                 title = stringResource(R.string.about_developer),
-                subtitle = "JGXH",
+                subtitle = stringResource(R.string.about_developer_sub),
                 icon = Icons.Outlined.PersonOutline,
+                onClick = { openUrl(context, DEVELOPER_URL) },
+                trailing = { Chevron() },
             )
             SettingRow(
                 title = stringResource(R.string.about_licenses),
@@ -152,10 +155,10 @@ fun AboutScreen(
                 trailing = { Chevron() },
             )
             SettingRow(
-                title = stringResource(R.string.about_feedback),
-                subtitle = stringResource(R.string.about_feedback_sub),
+                title = stringResource(R.string.about_project),
+                subtitle = stringResource(R.string.about_project_sub),
                 icon = Icons.AutoMirrored.Outlined.OpenInNew,
-                onClick = { openFeedback(context) },
+                onClick = { openUrl(context, PROJECT_URL) },
                 trailing = { Chevron() },
             )
 
@@ -330,10 +333,10 @@ private fun CrashLogDialog(
     )
 }
 
-private fun openFeedback(context: Context) {
-    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(FEEDBACK_URL))
+private fun openUrl(context: Context, url: String) {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
     runCatching { context.startActivity(intent) }
         .onFailure {
-            Toast.makeText(context, R.string.about_feedback_failed, Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, R.string.about_link_failed, Toast.LENGTH_SHORT).show()
         }
 }

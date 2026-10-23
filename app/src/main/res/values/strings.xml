@@ -208,10 +208,11 @@
     <string name="about_crash_count">%1$d 条</string>
     <string name="about_section_about">关于</string>
     <string name="about_developer">开发者</string>
+    <string name="about_developer_sub">github.com/apiu0809</string>
     <string name="about_licenses">开源许可</string>
-    <string name="about_feedback">意见反馈</string>
-    <string name="about_feedback_sub">GitHub Issues</string>
-    <string name="about_feedback_failed">无法打开链接</string>
+    <string name="about_project">项目地址</string>
+    <string name="about_project_sub">apiu0809/IntimateTracker</string>
+    <string name="about_link_failed">无法打开链接</string>
     <string name="about_footer">© 2026 JGXH · 数据只保存在你的设备上</string>
     <string name="about_crash_dialog_title">崩溃日志</string>
     <string name="about_crash_empty">还没有崩溃记录。</string>

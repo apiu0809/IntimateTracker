@@ -200,10 +200,11 @@
     <string name="about_crash_count">%1$d logs</string>
     <string name="about_section_about">About</string>
     <string name="about_developer">Developer</string>
+    <string name="about_developer_sub">github.com/apiu0809</string>
     <string name="about_licenses">Open-source licenses</string>
-    <string name="about_feedback">Feedback</string>
-    <string name="about_feedback_sub">GitHub Issues</string>
-    <string name="about_feedback_failed">Could not open the link</string>
+    <string name="about_project">Project</string>
+    <string name="about_project_sub">apiu0809/IntimateTracker</string>
+    <string name="about_link_failed">Could not open the link</string>
     <string name="about_footer">© 2026 JGXH · Data stays on your device</string>
     <string name="about_crash_dialog_title">Crash logs</string>
     <string name="about_crash_empty">No crashes recorded.</string>
