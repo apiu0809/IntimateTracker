@@ -1,8 +1,7 @@
 package com.mysecret.intimatetracker.ui.calendar
 
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -46,7 +45,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,12 +56,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -79,11 +83,22 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private val monthFormatter = DateTimeFormatter.ofPattern("yyyy年M月", Locale.SIMPLIFIED_CHINESE)
 private val dayFormatter = DateTimeFormatter.ofPattern("M月d日 EEEE", Locale.SIMPLIFIED_CHINESE)
 private val shortDayFormatter = DateTimeFormatter.ofPattern("M月d日", Locale.SIMPLIFIED_CHINESE)
 private val weekLabels = listOf("一", "二", "三", "四", "五", "六", "日")
+
+/** 月历单行日期格的高度，翻月补间按这个值换算整块高度。 */
+private val DAY_CELL_HEIGHT = 60.dp
+
+/** 该月月历占几行（周一为一周第一天）。 */
+private fun rowsOf(month: YearMonth): Int {
+    val offset = month.atDay(1).dayOfWeek.value - 1
+    return (offset + month.lengthOfMonth() + 6) / 7
+}
 
 private val PAGER_START: YearMonth = YearMonth.of(2000, 1)
 private const val PAGER_PAGES = 601
@@ -153,28 +168,81 @@ fun CalendarScreen(
                     }
                 }
                 item {
-                    HorizontalPager(
-                        state = pagerState,
-                        // 每个月行数不同（5 行 / 6 行），高度会随之变化；
-                        // 这里对高度做补间，翻月时下方的日期栏与记录列表平滑跟随，而不是瞬间跳动。
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .animateContentSize(
-                                animationSpec = spring<IntSize>(
+                    // 5 行 / 6 行月份高度不同：直接按「当前或手势指向的月份」算目标高度来补间。
+                    // 变高、变矮都在手势一开始就动，不必等到翻月停稳才回落。
+                    val density = LocalDensity.current
+                    val cellHeightPx = with(density) { DAY_CELL_HEIGHT.toPx() }
+                    var headerHeightPx by remember { mutableFloatStateOf(0f) }
+
+                    val heightPage by remember {
+                        derivedStateOf {
+                            val current = pagerState.currentPage
+                            val target = pagerState.targetPage
+                            val offset = pagerState.currentPageOffsetFraction
+                            val page = when {
+                                !pagerState.isScrollInProgress -> current
+                                // 月份选择器等跨月滚动：直接取终点，免得途中来回跳
+                                abs(target - current) > 1 -> target
+                                abs(offset) < 0.02f -> current
+                                offset > 0f -> current + 1
+                                else -> current - 1
+                            }
+                            page.coerceIn(0, PAGER_PAGES - 1)
+                        }
+                    }
+                    val targetHeightPx = if (headerHeightPx > 0f) {
+                        headerHeightPx + rowsOf(PAGER_START.plusMonths(heightPage.toLong())) * cellHeightPx
+                    } else {
+                        0f
+                    }
+                    val heightAnim = remember { Animatable(0f) }
+                    LaunchedEffect(targetHeightPx) {
+                        if (targetHeightPx <= 0f) return@LaunchedEffect
+                        if (heightAnim.value <= 0f) {
+                            heightAnim.snapTo(targetHeightPx)
+                        } else {
+                            heightAnim.animateTo(
+                                targetValue = targetHeightPx,
+                                animationSpec = spring(
                                     dampingRatio = Spring.DampingRatioNoBouncy,
                                     stiffness = Spring.StiffnessMedium,
-                                    visibilityThreshold = IntSize.VisibilityThreshold,
                                 ),
-                            ),
-                    ) { page ->
-                        MonthGrid(
-                            month = PAGER_START.plusMonths(page.toLong()),
-                            dayStyles = dayStyles,
-                            selected = viewModel.selectedDate,
-                            isToday = viewModel::isToday,
-                            onSelect = viewModel::select,
-                            filterActive = viewModel.filter.isActive,
-                        )
+                            )
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clipToBounds()
+                            .layout { measurable, constraints ->
+                                val placeable = measurable.measure(constraints.copy(minHeight = 0))
+                                val animated = heightAnim.value
+                                val height = if (animated > 0f) animated.roundToInt() else placeable.height
+                                layout(placeable.width, height) { placeable.place(0, 0) }
+                            },
+                    ) {
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { page ->
+                            val month = PAGER_START.plusMonths(page.toLong())
+                            MonthGrid(
+                                month = month,
+                                dayStyles = dayStyles,
+                                selected = viewModel.selectedDate,
+                                isToday = viewModel::isToday,
+                                onSelect = viewModel::select,
+                                filterActive = viewModel.filter.isActive,
+                                modifier = Modifier.onSizeChanged { size ->
+                                    // 用实测高度反推表头高度，字号缩放变化也能跟上
+                                    val headerPx = size.height - rowsOf(month) * cellHeightPx
+                                    if (headerPx > 0f && abs(headerPx - headerHeightPx) > 0.5f) {
+                                        headerHeightPx = headerPx
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
                 item {
@@ -568,12 +636,13 @@ private fun MonthGrid(
     isToday: (LocalDate) -> Boolean,
     onSelect: (LocalDate) -> Unit,
     filterActive: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     val offset = month.atDay(1).dayOfWeek.value - 1
     val days = month.lengthOfMonth()
-    val rows = (offset + days + 6) / 7
+    val rows = rowsOf(month)
 
-    Column {
+    Column(modifier = modifier) {
         Row(Modifier.fillMaxWidth()) {
             weekLabels.forEach { label ->
                 Text(
@@ -591,7 +660,7 @@ private fun MonthGrid(
                 repeat(7) { col ->
                     val dayNumber = row * 7 + col - offset + 1
                     Box(
-                        modifier = Modifier.weight(1f).height(60.dp),
+                        modifier = Modifier.weight(1f).height(DAY_CELL_HEIGHT),
                         contentAlignment = Alignment.TopCenter,
                     ) {
                         if (dayNumber in 1..days) {
