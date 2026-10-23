@@ -30,12 +30,15 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.material.icons.outlined.SystemUpdateAlt
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,6 +72,11 @@ fun AboutScreen(
     moreViewModel: MoreViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
+    val versionName = remember {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
+        }.getOrDefault("")
+    }
     val versionText = remember {
         runCatching {
             val info = context.packageManager.getPackageInfo(context.packageName, 0)
@@ -78,6 +86,24 @@ fun AboutScreen(
                 PackageInfoCompat.getLongVersionCode(info),
             )
         }.getOrDefault("")
+    }
+    val updateState = moreViewModel.updateState
+    LaunchedEffect(updateState) {
+        when (updateState) {
+            is UpdateUiState.UpToDate -> {
+                Toast.makeText(context, R.string.about_check_update_latest, Toast.LENGTH_SHORT).show()
+                moreViewModel.clearUpdateState()
+            }
+            is UpdateUiState.Failed -> {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.about_check_update_failed, updateState.reason),
+                    Toast.LENGTH_LONG,
+                ).show()
+                moreViewModel.clearUpdateState()
+            }
+            else -> Unit
+        }
     }
     var crashLogs by remember { mutableStateOf(CrashLogger.readAll(context)) }
     var showCrash by remember { mutableStateOf(false) }
@@ -127,6 +153,26 @@ fun AboutScreen(
                 icon = Icons.Outlined.History,
                 onClick = onOpenChangelog,
                 trailing = { Chevron() },
+            )
+            SettingRow(
+                title = stringResource(R.string.about_check_update),
+                subtitle = if (updateState is UpdateUiState.Checking) {
+                    stringResource(R.string.about_check_update_checking)
+                } else {
+                    stringResource(R.string.about_check_update_sub)
+                },
+                icon = Icons.Outlined.SystemUpdateAlt,
+                onClick = { moreViewModel.checkUpdate(versionName) },
+                trailing = {
+                    if (updateState is UpdateUiState.Checking) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Chevron()
+                    }
+                },
             )
             SettingRow(
                 title = stringResource(R.string.about_crash),
@@ -232,6 +278,37 @@ fun AboutScreen(
         )
     }
 
+    if (updateState is UpdateUiState.Available) {
+        AlertDialog(
+            onDismissRequest = moreViewModel::clearUpdateState,
+            title = {
+                Text(stringResource(R.string.about_update_available, updateState.info.version))
+            },
+            text = {
+                Text(
+                    text = updateState.info.notes.toPlainReleaseNotes().ifBlank {
+                        stringResource(R.string.about_update_notes_empty)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier
+                        .heightIn(max = 320.dp)
+                        .verticalScroll(rememberScrollState()),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    openUrl(context, updateState.info.pageUrl)
+                    moreViewModel.clearUpdateState()
+                }) { Text(stringResource(R.string.about_update_download)) }
+            },
+            dismissButton = {
+                TextButton(onClick = moreViewModel::clearUpdateState) {
+                    Text(stringResource(R.string.about_update_later))
+                }
+            },
+        )
+    }
+
     moreViewModel.message?.let { message ->
         AlertDialog(
             onDismissRequest = moreViewModel::dismissMessage,
@@ -332,6 +409,14 @@ private fun CrashLogDialog(
         },
     )
 }
+
+/** Release 说明是 Markdown，弹窗里只做轻量清理：去掉标题井号与加粗星号。 */
+private fun String.toPlainReleaseNotes(): String =
+    lineSequence()
+        .map { line -> line.trim().trimStart('#').trim().replace("**", "") }
+        .joinToString("\n")
+        .replace(Regex("\n{3,}"), "\n\n")
+        .trim()
 
 private fun openUrl(context: Context, url: String) {
     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))

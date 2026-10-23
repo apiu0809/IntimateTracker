@@ -195,6 +195,15 @@
     <string name="about_version">Version</string>
     <string name="about_version_value">%1$s (%2$d)</string>
     <string name="about_changelog">Changelog</string>
+    <string name="about_check_update">Check for updates</string>
+    <string name="about_check_update_sub">Fetch the latest build from GitHub Releases</string>
+    <string name="about_check_update_checking">Checking…</string>
+    <string name="about_check_update_latest">You are on the latest version</string>
+    <string name="about_check_update_failed">Update check failed: %1$s</string>
+    <string name="about_update_available">Version %1$s is available</string>
+    <string name="about_update_notes_empty">Open GitHub for this release\'s notes.</string>
+    <string name="about_update_download">Download</string>
+    <string name="about_update_later">Later</string>
     <string name="about_crash">Crash logs</string>
     <string name="about_crash_none">None</string>
     <string name="about_crash_count">%1$d logs</string>
