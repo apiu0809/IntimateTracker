@@ -50,7 +50,7 @@ fun SectionHeader(text: String, modifier: Modifier = Modifier) {
 
 /**
  * 通用页面骨架：紧凑标题栏（48dp，比 Material 默认 64dp 矮），
- * 可通过 [showTitleBar] 完全隐藏（行事历页用）。
+ * 可通过 [showTitleBar] 完全隐藏（日历页用）。
  */
 @Composable
 fun ScreenScaffold(

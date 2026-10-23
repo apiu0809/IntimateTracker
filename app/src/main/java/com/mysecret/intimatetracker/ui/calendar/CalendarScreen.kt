@@ -1,5 +1,9 @@
 package com.mysecret.intimatetracker.ui.calendar
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -56,6 +60,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -150,7 +155,17 @@ fun CalendarScreen(
                 item {
                     HorizontalPager(
                         state = pagerState,
-                        modifier = Modifier.fillMaxWidth(),
+                        // 每个月行数不同（5 行 / 6 行），高度会随之变化；
+                        // 这里对高度做补间，翻月时下方的日期栏与记录列表平滑跟随，而不是瞬间跳动。
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .animateContentSize(
+                                animationSpec = spring<IntSize>(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMedium,
+                                    visibilityThreshold = IntSize.VisibilityThreshold,
+                                ),
+                            ),
                     ) { page ->
                         MonthGrid(
                             month = PAGER_START.plusMonths(page.toLong()),

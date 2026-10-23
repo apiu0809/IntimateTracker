@@ -18,7 +18,7 @@
 
 ## 已实现功能
 
-- **行事历**：月历滑动翻月、筛选伴侣/自慰、按伴侣着色的日期高亮（筛选大环 + 今天小环）、每日记录列表、图标规则（自定义 → 星级 → 类型 → 玩具 → 防护，每天最多 2 个）
+- **日历**：月历滑动翻月、筛选伴侣/自慰、按伴侣着色的日期高亮（筛选大环 + 今天小环）、每日记录列表、图标规则（自定义 → 星级 → 类型 → 玩具 → 防护，每天最多 2 个）
 - **节奏卡**：距上次天数 / 上次记录 / 通常间隔 / 最长间隔；点击查看星期分布；可自订配色、计数单位、统计范围、是否只算与伴侣等 8 项
 - **记录**：14 字段表单、图标、照片、简化输入（底部面板）、日期选择；只读详情页 + 修改 / 删除
 - **历史**：按月/日分组 + 相册网格；左右滑动切换「活动 / 相册」
@@ -80,7 +80,7 @@ keyPassword=******
 ## 发布 Release
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File tools\publish_release.ps1 -Version v1.5.4
+powershell -ExecutionPolicy Bypass -File tools\publish_release.ps1 -Version v1.5.5
 ```
 
 脚本会从 `CHANGELOG.md` 提取对应小节生成 notes，创建或更新 Release，并上传 `releases/IntimateTracker-vX.Y.Z-arm64-v8a.apk`。加 `-Draft` 建草稿，加 `-SkipAsset` 只改说明。

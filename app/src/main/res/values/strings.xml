@@ -3,7 +3,7 @@
     <string name="app_name">亲密记录</string>
 
     <!-- 底部导航 -->
-    <string name="tab_calendar">行事历</string>
+    <string name="tab_calendar">日历</string>
     <string name="tab_history">历史</string>
     <string name="tab_stats">统计</string>
     <string name="tab_partner">伴侣</string>
@@ -17,9 +17,9 @@
     <string name="action_close">关闭</string>
     <string name="action_edit">编辑</string>
 
-    <!-- 行事历 -->
-    <string name="calendar_title">行事历</string>
-    <string name="calendar_filter">筛选</string>    <string name="calendar_filter_title">筛选行事历活动</string>
+    <!-- 日历 -->
+    <string name="calendar_title">日历</string>
+    <string name="calendar_filter">筛选</string>    <string name="calendar_filter_title">筛选日历活动</string>
     <string name="calendar_filter_clear">清除</string>
     <string name="calendar_filter_selected">已选 %1$d/%2$d</string>
     <string name="calendar_filter_only_solo">自慰</string>

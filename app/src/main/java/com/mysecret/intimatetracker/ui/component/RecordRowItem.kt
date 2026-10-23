@@ -39,7 +39,7 @@ import java.io.File
 
 /**
  * 记录行：头像（伴侣头像 / 名字首字 / 无伴侣时爱心）+ 图标列 + 伴侣名 + 时长·地点·类型 + 星级 + 箭头。
- * 行事历与历史共用。
+ * 日历与历史共用。
  */
 @Composable
 fun RecordRowItem(row: RecordListRow, onClick: () -> Unit, showIcons: Boolean = true) {

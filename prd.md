@@ -87,7 +87,7 @@ Agent 必须严格按照以下结构定义 Entity 和关系。**所有表均包�
 *   **形状**: 所有卡片圆角 `16.dp`。
 
 ### 3.2 页面组件清单 (Routes)
-1.  **`CalendarScreen` (行事历)**
+1.  **`CalendarScreen` (日历)**
     *   **顶部**: `RhythmCard` (展示距上次天数、上次记录、平均间隔、最长间隔)。
     *   **中部**: `MonthCalendar` (自定义 Compose 日历，选中日期高亮，有记录的日期下方显示自定义 Emoji)。
     *   **底部**: 选中日期的 `RecordList` 或显示“这天没有记录”。
@@ -187,7 +187,7 @@ fun downloadRemoteToLocal() {
 请使用 **Cursor Composer (Cmd+I / Ctrl+I)**，逐段输入以下 Prompt 进行构建：
 
 ### 阶段一：项目脚手架与基础配置
-> "创建 Android 项目，包名 `com.mysecret.intimatetracker`。配置 Gradle 依赖：Compose, Room, Hilt, Vico, Sardine-Android, Biometric, Coil。配置深色主题，背景色 #121212，主色 #85B898。实现包含 5 个 Tab 的底部导航栏（行事历、历史、统计、伴侣、更多），使用 Navigation Compose，并为每个 Tab 创建基础 Empty Screen。"
+> "创建 Android 项目，包名 `com.mysecret.intimatetracker`。配置 Gradle 依赖：Compose, Room, Hilt, Vico, Sardine-Android, Biometric, Coil。配置深色主题，背景色 #121212，主色 #85B898。实现包含 5 个 Tab 的底部导航栏（日历、历史、统计、伴侣、更多），使用 Navigation Compose，并为每个 Tab 创建基础 Empty Screen。"
 
 ### 阶段二：数据层 (Room + Repository)
 > "根据 PRD 中的[2. 数据库设计]，创建所有的 Room Entity 和交叉引用表。为每个 Entity 编写 DAO 接口，包含基础 CRUD 方法。创建 `AppDatabase`。使用 Hilt 提供依赖注入。实现 `RecordRepository`，包含以下方法：插入记录并绑定多对多关系、按日期查询记录、获取最新记录的日期、获取总记录数。"
