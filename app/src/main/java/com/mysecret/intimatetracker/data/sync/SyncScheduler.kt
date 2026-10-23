@@ -33,7 +33,7 @@ class SyncScheduler @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settings: SettingsDao,
     private val syncManager: SyncManager,
-) {
+) : SyncTrigger {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -54,7 +54,7 @@ class SyncScheduler @Inject constructor(
         scope.launch { maybeSyncOnOpenNow() }
     }
 
-    fun onLocalChange() {
+    override fun onLocalChange() {
         scope.launch {
             if (!enabled()) return@launch
             val (wifi, charging) = constraintsFromSettings()

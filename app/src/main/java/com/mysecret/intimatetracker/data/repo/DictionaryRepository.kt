@@ -6,7 +6,7 @@ import com.mysecret.intimatetracker.data.db.LocationEntity
 import com.mysecret.intimatetracker.data.db.PositionEntity
 import com.mysecret.intimatetracker.data.db.SexTypeEntity
 import com.mysecret.intimatetracker.data.db.ToyEntity
-import com.mysecret.intimatetracker.data.sync.SyncScheduler
+import com.mysecret.intimatetracker.data.sync.SyncTrigger
 import com.mysecret.intimatetracker.domain.model.Intensity
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -39,7 +39,7 @@ data class DictionaryItem(
 @Singleton
 class DictionaryRepository @Inject constructor(
     private val db: AppDatabase,
-    private val syncScheduler: SyncScheduler,
+    private val syncScheduler: SyncTrigger,
 ) {
 
     fun observe(kind: DictionaryKind): Flow<List<DictionaryItem>> = when (kind) {

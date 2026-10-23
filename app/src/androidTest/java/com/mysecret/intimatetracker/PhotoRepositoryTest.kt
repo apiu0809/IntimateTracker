@@ -10,6 +10,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mysecret.intimatetracker.data.db.AppDatabase
 import com.mysecret.intimatetracker.data.db.RecordEntity
 import com.mysecret.intimatetracker.data.repo.PhotoRepository
+import com.mysecret.intimatetracker.data.sync.SyncTrigger
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -32,7 +33,7 @@ class PhotoRepositoryTest {
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = PhotoRepository(context, db)
+        repository = PhotoRepository(context, db, SyncTrigger { })
         val now = System.currentTimeMillis()
         db.recordDao().upsert(RecordEntity(id = "r1", timestamp = now, createdAt = now, updatedAt = now))
     }

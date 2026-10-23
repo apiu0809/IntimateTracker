@@ -6,7 +6,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import com.mysecret.intimatetracker.data.db.AppDatabase
 import com.mysecret.intimatetracker.data.db.PhotoEntity
-import com.mysecret.intimatetracker.data.sync.SyncScheduler
+import com.mysecret.intimatetracker.data.sync.SyncTrigger
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -23,7 +23,7 @@ import kotlin.math.min
 class PhotoRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: AppDatabase,
-    private val syncScheduler: SyncScheduler,
+    private val syncScheduler: SyncTrigger,
 ) {
 
     fun fileFor(relPath: String): File = File(context.filesDir, relPath)

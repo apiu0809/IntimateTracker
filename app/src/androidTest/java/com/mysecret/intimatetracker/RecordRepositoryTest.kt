@@ -9,6 +9,7 @@ import com.mysecret.intimatetracker.data.db.PositionEntity
 import com.mysecret.intimatetracker.data.db.Seeder
 import com.mysecret.intimatetracker.data.repo.RecordDraft
 import com.mysecret.intimatetracker.data.repo.RecordRepository
+import com.mysecret.intimatetracker.data.sync.SyncTrigger
 import com.mysecret.intimatetracker.domain.model.Initiator
 import com.mysecret.intimatetracker.domain.model.Protection
 import kotlinx.coroutines.flow.first
@@ -52,7 +53,7 @@ class RecordRepositoryTest {
                 ),
             )
         }
-        repository = RecordRepository(db)
+        repository = RecordRepository(db, SyncTrigger { })
         Seeder.seed(db)
         db.partnerDao().upsert(
             PartnerEntity(

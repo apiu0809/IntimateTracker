@@ -57,8 +57,8 @@
 ```powershell
 $env:JAVA_HOME = "E:\Program Files\Android\Android Studio\jbr"   # JDK 21
 .\gradlew.bat assembleDebug
-.\gradlew.bat testDebugUnitTest          # 21 项单测
-.\gradlew.bat connectedDebugAndroidTest  # 34 项仪器测试（需模拟器/真机）
+.\gradlew.bat testDebugUnitTest          # 49 项单测
+.\gradlew.bat connectedDebugAndroidTest  # 38 项仪器测试（需模拟器/真机）
 .\gradlew.bat assembleRelease            # 签名包，见下
 ```
 

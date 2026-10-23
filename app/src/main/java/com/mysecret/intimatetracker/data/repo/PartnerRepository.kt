@@ -2,7 +2,7 @@ package com.mysecret.intimatetracker.data.repo
 
 import com.mysecret.intimatetracker.data.db.PartnerDao
 import com.mysecret.intimatetracker.data.db.PartnerEntity
-import com.mysecret.intimatetracker.data.sync.SyncScheduler
+import com.mysecret.intimatetracker.data.sync.SyncTrigger
 import com.mysecret.intimatetracker.domain.model.Gender
 import com.mysecret.intimatetracker.domain.model.RelationshipType
 import kotlinx.coroutines.flow.Flow
@@ -14,7 +14,7 @@ import javax.inject.Singleton
 @Singleton
 class PartnerRepository @Inject constructor(
     private val dao: PartnerDao,
-    private val syncScheduler: SyncScheduler,
+    private val syncScheduler: SyncTrigger,
 ) {
 
     private val activeCache = kotlinx.coroutines.flow.MutableStateFlow<List<PartnerEntity>>(emptyList())

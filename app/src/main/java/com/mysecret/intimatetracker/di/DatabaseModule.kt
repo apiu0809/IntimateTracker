@@ -16,6 +16,8 @@ import com.mysecret.intimatetracker.data.db.SexTypeDao
 import com.mysecret.intimatetracker.data.db.ToyDao
 import dagger.Module
 import com.mysecret.intimatetracker.data.sync.OkHttpWebDavFactory
+import com.mysecret.intimatetracker.data.sync.SyncScheduler
+import com.mysecret.intimatetracker.data.sync.SyncTrigger
 import com.mysecret.intimatetracker.data.sync.WebDavClientFactory
 import dagger.Binds
 import dagger.Provides
@@ -71,4 +73,7 @@ object DatabaseModule {
 abstract class SyncModule {
     @Binds
     abstract fun bindWebDavFactory(impl: OkHttpWebDavFactory): WebDavClientFactory
+
+    @Binds
+    abstract fun bindSyncTrigger(impl: SyncScheduler): SyncTrigger
 }

@@ -10,7 +10,7 @@ import com.mysecret.intimatetracker.data.db.RecordPartnerCrossRef
 import com.mysecret.intimatetracker.data.db.RecordPositionCrossRef
 import com.mysecret.intimatetracker.data.db.RecordSexTypeCrossRef
 import com.mysecret.intimatetracker.data.db.RecordToyCrossRef
-import com.mysecret.intimatetracker.data.sync.SyncScheduler
+import com.mysecret.intimatetracker.data.sync.SyncTrigger
 import com.mysecret.intimatetracker.domain.RhythmSettings
 import com.mysecret.intimatetracker.domain.model.Initiator
 import com.mysecret.intimatetracker.domain.model.Protection
@@ -54,7 +54,7 @@ data class RhythmStats(
 @Singleton
 class RecordRepository @Inject constructor(
     private val db: AppDatabase,
-    private val syncScheduler: SyncScheduler,
+    private val syncScheduler: SyncTrigger,
 ) {
 
     fun observeBetween(from: Long, to: Long): Flow<List<RecordListRow>> =
