@@ -25,9 +25,7 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material.icons.outlined.SystemUpdateAlt
@@ -52,7 +50,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.pm.PackageInfoCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mysecret.intimatetracker.R
 import com.mysecret.intimatetracker.data.CrashLogger
@@ -77,17 +74,8 @@ fun AboutScreen(
             context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
         }.getOrDefault("")
     }
-    val versionText = remember {
-        runCatching {
-            val info = context.packageManager.getPackageInfo(context.packageName, 0)
-            context.getString(
-                R.string.about_version_value,
-                info.versionName.orEmpty(),
-                PackageInfoCompat.getLongVersionCode(info),
-            )
-        }.getOrDefault("")
-    }
     val updateState = moreViewModel.updateState
+
     LaunchedEffect(updateState) {
         when (updateState) {
             is UpdateUiState.UpToDate -> {
@@ -107,7 +95,6 @@ fun AboutScreen(
     }
     var crashLogs by remember { mutableStateOf(CrashLogger.readAll(context)) }
     var showCrash by remember { mutableStateOf(false) }
-    var showExport by remember { mutableStateOf(false) }
     var showClear by remember { mutableStateOf(false) }
 
     ScreenScaffold(title = stringResource(R.string.more_about), onBack = onBack) { modifier ->
@@ -127,13 +114,6 @@ fun AboutScreen(
                 trailing = { Chevron() },
             )
             SettingRow(
-                title = stringResource(R.string.more_export),
-                subtitle = stringResource(R.string.about_export_sub),
-                icon = Icons.Outlined.FileDownload,
-                onClick = { showExport = true },
-                trailing = { Chevron() },
-            )
-            SettingRow(
                 title = stringResource(R.string.more_clear),
                 subtitle = stringResource(R.string.about_clear_sub),
                 icon = Icons.Outlined.DeleteSweep,
@@ -144,12 +124,8 @@ fun AboutScreen(
 
             SettingGroupLabel(stringResource(R.string.about_section_app))
             SettingRow(
-                title = stringResource(R.string.about_version),
-                subtitle = versionText,
-                icon = Icons.Outlined.Info,
-            )
-            SettingRow(
                 title = stringResource(R.string.about_changelog),
+                subtitle = stringResource(R.string.about_changelog_sub, versionName),
                 icon = Icons.Outlined.History,
                 onClick = onOpenChangelog,
                 trailing = { Chevron() },
@@ -195,16 +171,16 @@ fun AboutScreen(
                 trailing = { Chevron() },
             )
             SettingRow(
-                title = stringResource(R.string.about_licenses),
-                icon = Icons.Outlined.Description,
-                onClick = onOpenLicenses,
-                trailing = { Chevron() },
-            )
-            SettingRow(
                 title = stringResource(R.string.about_project),
                 subtitle = stringResource(R.string.about_project_sub),
                 icon = Icons.AutoMirrored.Outlined.OpenInNew,
                 onClick = { openUrl(context, PROJECT_URL) },
+                trailing = { Chevron() },
+            )
+            SettingRow(
+                title = stringResource(R.string.about_licenses),
+                icon = Icons.Outlined.Description,
+                onClick = onOpenLicenses,
                 trailing = { Chevron() },
             )
 
@@ -237,25 +213,6 @@ fun AboutScreen(
                 Toast.makeText(context, R.string.about_crash_cleared, Toast.LENGTH_SHORT).show()
             },
             onDismiss = { showCrash = false },
-        )
-    }
-
-    if (showExport) {
-        AlertDialog(
-            onDismissRequest = { showExport = false },
-            title = { Text(stringResource(R.string.more_export)) },
-            text = { Text(stringResource(R.string.about_export_confirm)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showExport = false
-                    moreViewModel.export()
-                }) { Text(stringResource(R.string.about_export_action)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showExport = false }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
         )
     }
 

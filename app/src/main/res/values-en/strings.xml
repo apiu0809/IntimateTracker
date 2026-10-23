@@ -189,12 +189,10 @@
     <string name="about_section_data">Data &amp; privacy</string>
     <string name="about_where_data">Where your data lives</string>
     <string name="about_where_data_sub">Stored on this device only</string>
-    <string name="about_export_sub">Zip the database and photos into Downloads</string>
     <string name="about_clear_sub">Cannot be undone</string>
     <string name="about_section_app">App</string>
-    <string name="about_version">Version</string>
-    <string name="about_version_value">%1$s (%2$d)</string>
     <string name="about_changelog">Changelog</string>
+    <string name="about_changelog_sub">Version %1$s</string>
     <string name="about_check_update">Check for updates</string>
     <string name="about_check_update_sub">Fetch the latest build from GitHub Releases</string>
     <string name="about_check_update_checking">Checking…</string>
@@ -221,9 +219,7 @@
     <string name="about_crash_clear">Clear</string>
     <string name="about_crash_copied">Copied to clipboard</string>
     <string name="about_crash_cleared">Cleared</string>
-    <string name="about_export_confirm">The database and photos will be zipped into Downloads/IntimateTracker.</string>
     <string name="about_clear_confirm">All records, dictionaries and photos will be deleted. This cannot be undone. Continue?</string>
-    <string name="about_export_action">Export</string>
     <string name="about_clear_action">Erase</string>
 
     <!-- Privacy -->

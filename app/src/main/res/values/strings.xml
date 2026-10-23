@@ -197,12 +197,10 @@
     <string name="about_section_data">数据与隐私</string>
     <string name="about_where_data">你的数据在哪里</string>
     <string name="about_where_data_sub">全部保存在本机，不上传</string>
-    <string name="about_export_sub">打包数据库与照片到「下载」</string>
     <string name="about_clear_sub">不可恢复，请谨慎操作</string>
     <string name="about_section_app">应用</string>
-    <string name="about_version">当前版本</string>
-    <string name="about_version_value">%1$s (%2$d)</string>
     <string name="about_changelog">更新日志</string>
+    <string name="about_changelog_sub">版本 %1$s</string>
     <string name="about_check_update">检查更新</string>
     <string name="about_check_update_sub">从 GitHub Releases 获取最新版本</string>
     <string name="about_check_update_checking">正在检查…</string>
@@ -229,9 +227,7 @@
     <string name="about_crash_clear">清空</string>
     <string name="about_crash_copied">已复制到剪贴板</string>
     <string name="about_crash_cleared">已清空</string>
-    <string name="about_export_confirm">将数据库与照片打包为 zip，保存到系统“下载/IntimateTracker”。</string>
     <string name="about_clear_confirm">将删除全部记录、字典与照片，且无法恢复。确定继续？</string>
-    <string name="about_export_action">导出</string>
     <string name="about_clear_action">清空</string>
 
     <!-- 隐私说明 -->
