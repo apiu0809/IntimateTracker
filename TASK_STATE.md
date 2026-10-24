@@ -1,12 +1,13 @@
 # TASK_STATE — Intimate Tracker
 
-> 快照时间：2026-10-24 22:55（Asia/Shanghai）
+> 快照时间：2026-10-24 23:00（Asia/Shanghai）
 > 用途：上下文告急时的交接文件；恢复工作请先读本文件，再读 `prd-v1.1.md`。
 
 ## 1. 任务目标
 
-按 `prd-v1.1.md` 实现 Android App「亲密记录 / Intimate Tracker」（Kotlin + Compose + Room + Hilt），
-分 4 个 Sprint 交付：**S1 骨架+数据层+字典/伴侣（已完成）→ S2 记录表单+日历+历史 → S3 统计 9 页签 → S4 同步 v2+应用锁+导出**。
+按 `prd-v1.1.md` 实现 Android App「亲密记录 / Intimate Tracker」（Kotlin + Compose + Room + Hilt）。
+4 个 Sprint 均已于 2026-10-22 交付：**S1 骨架+数据层+字典/伴侣 → S2 记录表单+日历+历史 → S3 统计 9 页签 → S4 同步 v2+应用锁+导出**；
+当前版本 **v1.5.9**（versionCode 51），2026-10-24 已真机复跑 38 项仪器测试全绿（见 §2.6）。
 
 已确认的四项产品决策：
 1. 范围裁剪：不做账号体系与增值模块，仅 WebDAV 文件同步
@@ -92,17 +93,20 @@ S4 已交付：WebDAV v2 同步（客户端/合并/设置页/测试）、应用�
   2. 设备残留**旧签名包** → `INSTALL_FAILED_UPDATE_INCOMPATIBLE`，先 `adb uninstall com.mysecret.intimatetracker`（`.test` 同理）
   3. `adb` 不在 PATH，统一用 `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe`
 
-## 3. 未完成事项
+## 3. 剩余事项（2026-10-24 按代码核对后重写）
 
-- [ ] **S2**：新增/编辑记录（14 字段 + 简化输入联动 + emoji 选择器 63 个 + 照片 + 模板）、日历（自绘月历 + 节奏卡 + 筛选）、历史（活动/相册）
-- [ ] **S3**：统计 9 页签 + 期间/伴侣双筛 + 口径常量 + 黄金用例（17 条 fixture）+ Vico 3 图表
-- [ ] **S4**：WebDAV v2 同步、应用锁（生物识别 + PIN 兜底）、导出/清空数据、i18n 英文
-- [ ] 文档修正：`prd-v1.1.md` §10 写"13 表"，实际落地 **16 表**（11 主表 + 5 交叉表），需同步修正
-- [ ] 伴侣头像（`avatar_path` 字段已建，UI 未实现上传/裁切）
-- [ ] 简化输入设置页（14 开关，当前仅占位弹窗）
-- [ ] 偏好设置 / 应用锁 / WebDAV / 导出 / 清空 均为占位项（点击弹"后续版本提供"）
-- [ ] Room Migration 策略（当前 version 1，无迁移）
-- [ ] 应用图标（暂用系统默认）
+> 旧版本节停留在 S1 阶段。核对后确认已落地、可从待办移除的：S2/S3/S4 全部功能、伴侣头像（导入/中心裁切 512px/更换/移除）、
+> 简化输入（已改为记录表单内 `SimplifiedInputSheet`，非独立设置页）、偏好设置、应用锁、WebDAV、导出/清空、Room v2 迁移、应用图标。
+> 下表只保留**核对后仍成立**的项。
+
+| 事项 | 现状 / 依据 |
+|---|---|
+| `prd-v1.1.md` 表数表述不一致 | §10 写「13 表」，DDL 仅 12 个 `CREATE TABLE`，实现 **16 表**（README 已写 16）→ 需统一 |
+| `README.md`「已知限制」过期 | 仍写「Room version 1、无 Migration」「伴侣头像未实现」「单张照片删除未实现」；实际 DB v2 + `Migrations.ALL`、头像已实现、`RecordDetailScreen` 可删照片 |
+| 应用内语言切换 | 未接 `AppCompatDelegate.setApplicationLocales`（全仓 grep 无调用），当前跟随系统语言 |
+| 产物 / 包体配置 | 仅 `arm64-v8a`（`splits.abi`，可 `-PwithX86` 额外出 x86_64）；未开 R8/minify |
+| 生物识别成功路径 | 仍缺真机验证记录（instrumentation 不覆盖 BiometricPrompt） |
+| 未引用文案 | `more_simplified` / `simplified_hint` / `simplified_min` 仅定义未被引用（grep 确认）→ 可选清理 |
 
 ## 4. 关键文件路径
 
@@ -149,7 +153,7 @@ $env:JAVA_HOME="E:\Program Files\Android\Android Studio\jbr"
 .\gradlew.bat assembleDebug --console=plain
 # 产物：app/build/outputs/apk/debug/app-debug.apk（约 18.9MB）
 
-# JVM 单测（8 项）
+# JVM 单测（55 项）
 .\gradlew.bat testDebugUnitTest --console=plain
 
 # 仪器测试（38 项）
@@ -181,7 +185,7 @@ git add -A; git commit -m "..."; git push
 | 环境 | 本机默认沙箱会拦截 git 的 schannel 和 Gradle 写盘；当前会话已是 danger-full-access，新会话若回退需重新申请 |
 | 编译告警 | `hiltViewModel` 提示迁移到 `androidx.hilt.lifecycle.viewmodel.compose`（未处理，不影响构建）；`TabRow` 已换 `PrimaryTabRow` |
 | 数据 | 软删伴侣时**保留**交叉表关联（有意为之，历史记录需要）；硬删才 CASCADE —— 已有测试锁定，勿随意改 |
-| 迁移 | DB version=1，尚未写 Migration；后续加表必须补 |
+| 迁移 | DB version=2，迁移集中在 `Migrations.kt`（`Migrations.ALL`），schema 已导出 `1.json` / `2.json`；再加表必须补 Migration 并导出 schema |
 | 测试 | 仪器测试 2026-10-24 真机 38 项全绿；模拟器 AEHD 可用但需完整权限 |
 | 测试（真机） | MIUI 每次 ADB 安装弹「USB 安装提示」，10 秒内不点「继续安装」即 `INSTALL_FAILED_USER_RESTRICTED`；跑 `connectedDebugAndroidTest` 需盯手机确认 |
 | 数据 | pm clear 后旧记录仍可能出现（WAL/文件残留），验证前用 **卸载重装** 才是干净状态 |
@@ -190,8 +194,7 @@ git add -A; git commit -m "..."; git push
 
 ## 8. 下一步建议
 
-1. **先做 S2 的「新增/编辑记录」**：`RecordRepository`（含 5 张交叉表事务插入）、`AddRecordScreen`（14 字段 + 简化输入开关 + emoji picker 63 个 + PhotoPicker），字段规格见 `prd-v1.1.md §5.2`
-2. 再做日历：`MonthCalendar` 自绘 7 列 + `HorizontalPager` 翻月 + 当日 emoji（`record.icon` → 主类型 emoji）+ `RhythmCard`（距上次/最长间隔/通常=中位数±1，样本<3 显示"—"）
-3. 最后历史：活动（两级分组卡片，副行"10分钟 · 厕所"）+ 相册（LazyVerticalGrid 按月分组）
-4. 每完成一块：`assembleDebug` → 装机截图 → commit；Sprint 结束统一 push
-5. 顺手修正 `prd-v1.1.md` 的表数量表述（13 → 16）
+1. **先补文档**（即 §3 前两条）：`prd-v1.1.md` 表数统一为 16、`README.md` 已知限制按实际更新
+2. **回归口径**：改动后跑 `.\gradlew.bat testDebugUnitTest` + 真机 `connectedDebugAndroidTest`（38 项）；真机注意 MIUI 安装弹框 10 秒内点「继续安装」
+3. **发版**：`powershell -ExecutionPolicy Bypass -File tools\publish_release.ps1 -Version vX.Y.Z`，同步更新 `CHANGELOG.md` / `更新日志.md` 并打 `vX.Y.Z` tag
+4. **可选增强**：开 R8 + 体积优化、补 x86_64 包、语言切换接系统 API、生物识别真机验证、清理未引用文案
