@@ -38,6 +38,23 @@ object RhythmCalculator {
             else -> RhythmBand.ALERT
         }
     }
+
+    /** 0 天时仍画一小段，表示「刚刚」；没有记录（null）才是一段都不画。 */
+    const val MIN_ARC_FRACTION = 0.06f
+
+    /**
+     * 圆环弧长比例（0..1）：以 [RhythmSettings.longGapDays] 为满格。
+     *
+     * 满格的端点刻意选长间隔阈值而不是通常间隔 —— 弧满 = 正好该注意了，跟 [RhythmBand.ALERT]
+     * 的边界重合，于是「弧满」和「变红」同时发生，不用两套阈值去解释。超过阈值后封顶在 1，
+     * 不再绕第二圈。
+     */
+    fun arcFraction(daysSinceLast: Int?, longGapDays: Int): Float {
+        if (daysSinceLast == null) return 0f
+        if (longGapDays <= 0) return 1f
+        return (daysSinceLast.toFloat() / longGapDays).coerceIn(MIN_ARC_FRACTION, 1f)
+    }
+
     fun displayNumber(daysSinceLast: Int?, weeklyUnit: Boolean): String {
         if (daysSinceLast == null) return "—"
         return if (weeklyUnit && daysSinceLast >= 7) (daysSinceLast / 7).toString() else daysSinceLast.toString()

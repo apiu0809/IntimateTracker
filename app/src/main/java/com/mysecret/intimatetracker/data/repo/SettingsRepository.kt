@@ -74,13 +74,15 @@ class SettingsRepository @Inject constructor(private val dao: SettingsDao) {
     fun observeTheme(): Flow<ThemePrefs> = dao.observeAll().map { settings ->
         val map = settings.associate { it.key to it.value }
         ThemePrefs(
-            accentArgb = map[ThemePrefs.KEY_ACCENT]?.toIntOrNull(),
+            seedArgb = map[ThemePrefs.KEY_ACCENT]?.toIntOrNull(),
             mode = runCatching { ThemeMode.valueOf(map[ThemePrefs.KEY_MODE].orEmpty()) }
                 .getOrDefault(ThemeMode.AUTO),
+            amoled = map[ThemePrefs.KEY_AMOLED] == "true",
+            dynamicColor = map[ThemePrefs.KEY_DYNAMIC] == "true",
         )
     }
 
-    suspend fun saveAccent(argb: Int?) {
+    suspend fun saveSeed(argb: Int?) {
         if (argb == null) {
             dao.delete(ThemePrefs.KEY_ACCENT)
         } else {
@@ -90,6 +92,14 @@ class SettingsRepository @Inject constructor(private val dao: SettingsDao) {
 
     suspend fun saveThemeMode(mode: ThemeMode) {
         dao.put(SettingEntity(ThemePrefs.KEY_MODE, mode.name))
+    }
+
+    suspend fun saveAmoled(enabled: Boolean) {
+        dao.put(SettingEntity(ThemePrefs.KEY_AMOLED, enabled.toString()))
+    }
+
+    suspend fun saveDynamicColor(enabled: Boolean) {
+        dao.put(SettingEntity(ThemePrefs.KEY_DYNAMIC, enabled.toString()))
     }
     suspend fun setFieldVisible(field: FormField, visible: Boolean) =
         dao.put(SettingEntity(field.settingKey, visible.toString()))

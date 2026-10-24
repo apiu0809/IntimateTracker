@@ -39,18 +39,31 @@ import androidx.compose.ui.unit.dp
 import com.mysecret.intimatetracker.ui.component.AppBottomSheet
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.mysecret.intimatetracker.data.repo.RhythmBand
+import com.mysecret.intimatetracker.data.repo.RhythmCalculator
 import com.mysecret.intimatetracker.data.repo.RhythmStats
 import com.mysecret.intimatetracker.domain.RhythmSettings
 import java.text.NumberFormat
 
-/** 节奏卡圆环颜色：中性 → 主题色 → 警示色（按距上次天数）。 */
+/**
+ * 圆环弧的颜色：常态 → 主色，偏长 → 第三色，超期 → 错误色；关闭「彩色化」后一律主色。
+ *
+ * 为什么不用「灰 / 主色 / 红」：主色现在由用户种子或壁纸决定。碰上珊瑚、琥珀、玫红这类暖色
+ * 种子，主色和错误色的色相会撞在一起（实测珊瑚预设：主色 #AC3313、错误色 #BF0031），
+ * 后两档几乎分不出来。tertiary 在种子方案里恒为「主色 +60°」，任何种子下都与主色不同色相；
+ * error 恒为红（色相 25、彩度 84），与任何种子也拉得开。
+ *
+ * 颜色只是第三层编码：弧长说明「过去多久」，数字说明「几天」，色相只负责加强。
+ */
 @Composable
-fun rhythmRingColor(settings: RhythmSettings, daysSinceLast: Int?): Color =
-    when (com.mysecret.intimatetracker.data.repo.RhythmCalculator.band(settings, daysSinceLast)) {
-        com.mysecret.intimatetracker.data.repo.RhythmBand.NEUTRAL -> MaterialTheme.colorScheme.onSurfaceVariant
-        com.mysecret.intimatetracker.data.repo.RhythmBand.NORMAL -> MaterialTheme.colorScheme.primary
-        com.mysecret.intimatetracker.data.repo.RhythmBand.ALERT -> MaterialTheme.colorScheme.error
+fun rhythmRingColor(settings: RhythmSettings, band: RhythmBand): Color {
+    if (!settings.colorize) return MaterialTheme.colorScheme.primary
+    return when (band) {
+        RhythmBand.NEUTRAL -> MaterialTheme.colorScheme.primary
+        RhythmBand.NORMAL -> MaterialTheme.colorScheme.tertiary
+        RhythmBand.ALERT -> MaterialTheme.colorScheme.error
     }
+}
 
 private val weekLabels = listOf("一", "二", "三", "四", "五", "六", "日")
 

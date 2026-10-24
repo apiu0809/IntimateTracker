@@ -91,8 +91,8 @@ private fun PrivacyCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(16.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(16.dp))
             .padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

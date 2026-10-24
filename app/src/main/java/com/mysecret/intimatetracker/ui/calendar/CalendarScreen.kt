@@ -5,6 +5,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -12,6 +13,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -65,11 +67,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -80,6 +88,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mysecret.intimatetracker.R
 import com.mysecret.intimatetracker.data.db.RecordListRow
+import com.mysecret.intimatetracker.data.repo.RhythmBand
 import com.mysecret.intimatetracker.data.repo.RhythmCalculator
 import com.mysecret.intimatetracker.data.repo.RhythmStats
 import com.mysecret.intimatetracker.domain.RhythmSettings
@@ -87,6 +96,7 @@ import com.mysecret.intimatetracker.ui.component.AppBottomSheet
 import com.mysecret.intimatetracker.ui.component.AppFab
 import com.mysecret.intimatetracker.ui.component.RecordRowItem
 import com.mysecret.intimatetracker.ui.component.ScreenScaffold
+import com.mysecret.intimatetracker.ui.component.rememberAnimationsEnabled
 import com.mysecret.intimatetracker.ui.theme.PartnerColors
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -476,7 +486,7 @@ private fun FilterButton(count: Int, onClick: () -> Unit) {
         modifier = Modifier
             .height(38.dp)
             .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(50))
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -518,28 +528,87 @@ private fun RhythmCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val ringColor = rhythmRingColor(settings, stats?.daysSinceLast)
+    val band = RhythmCalculator.band(settings, stats?.daysSinceLast)
+    val animated = rememberAnimationsEnabled()
+    val ringColor by animateColorAsState(
+        targetValue = rhythmRingColor(settings, band),
+        animationSpec = if (animated) tween(durationMillis = 420) else snap(),
+        label = "rhythmRingColor",
+    )
+    val arc by animateFloatAsState(
+        targetValue = RhythmCalculator.arcFraction(stats?.daysSinceLast, settings.longGapDays),
+        animationSpec = if (animated) {
+            spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessLow)
+        } else {
+            snap()
+        },
+        label = "rhythmRingArc",
+    )
     val bigNumber = RhythmCalculator.displayNumber(stats?.daysSinceLast, settings.weeklyUnit)
-    val cardShape = RoundedCornerShape(16.dp)
+    val unit = RhythmCalculator.displayUnit(stats?.daysSinceLast, settings.weeklyUnit)
+    // 环本身是装饰性的，整块只报一句人话，别让读屏念零散的数字与单位。
+    val ringDescription = when {
+        stats?.daysSinceLast == null -> stringResource(R.string.calendar_ring_desc_none)
+        band == RhythmBand.ALERT -> stringResource(R.string.calendar_ring_desc_over, "$bigNumber${unit.orEmpty()}")
+        else -> stringResource(R.string.calendar_ring_desc, "$bigNumber${unit.orEmpty()}")
+    }
+    val cardShape = RoundedCornerShape(12.dp)
 
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         shape = cardShape,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 15.dp)) {
-            Row(verticalAlignment = Alignment.Top) {
+        // 内距与下面的字号/间距按参考稿实测值复刻（16·12·14dp）：底边比上边多 2dp，
+        // 因为底行是 12sp 的小字，视觉上需要多一点留白才与上方的 15sp 区块平衡。
+        Column(
+            Modifier.padding(
+                start = 16.dp,
+                top = 12.dp,
+                end = 16.dp,
+                bottom = 14.dp,
+            ),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
-                        .size(58.dp)
-                        .border(5.dp, ringColor, CircleShape),
+                        .size(60.dp)
+                        .clearAndSetSemantics { contentDescription = ringDescription },
                     contentAlignment = Alignment.Center,
                 ) {
+                    // 轨道 + 进度弧：弧长说明「过去多久」，颜色只做加强。
+                    // 轨道用 surfaceContainerHighest —— M3 进度轨道的标准角色，换主题自动跟着走。
+                    val trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                    Canvas(Modifier.fillMaxSize()) {
+                        val stroke = 6.dp.toPx()
+                        val arcSize = Size(size.width - stroke, size.height - stroke)
+                        val topLeft = Offset(stroke / 2f, stroke / 2f)
+                        drawArc(
+                            color = trackColor,
+                            startAngle = 0f,
+                            sweepAngle = 360f,
+                            useCenter = false,
+                            topLeft = topLeft,
+                            size = arcSize,
+                            style = Stroke(width = stroke),
+                        )
+                        if (arc > 0f) {
+                            drawArc(
+                                color = ringColor,
+                                startAngle = -90f,
+                                sweepAngle = 360f * arc,
+                                useCenter = false,
+                                topLeft = topLeft,
+                                size = arcSize,
+                                style = Stroke(width = stroke, cap = StrokeCap.Round),
+                            )
+                        }
+                    }
                     Text(
                         text = bigNumber,
-                        style = MaterialTheme.typography.headlineMedium.copy(fontSize = 26.sp),
+                        style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -553,10 +622,7 @@ private fun RhythmCard(
                             } else {
                                 stringResource(R.string.calendar_days_ago)
                             },
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontSize = 15.sp,
-                                lineHeight = 19.sp,
-                            ),
+                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 15.sp),
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
@@ -575,84 +641,80 @@ private fun RhythmCard(
                                     .padding(horizontal = 8.dp, vertical = 2.dp),
                             )
                         }
-                        Spacer(Modifier.size(8.dp))
+                        Spacer(Modifier.size(4.dp))
                         Icon(
                             imageVector = Icons.Outlined.Info,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp),
+                            // 参考稿里这个图标比标题行中线低约 5dp（与标题的字身底部更近），
+                            // offset 只改绘制位置，不参与排版。
+                            modifier = Modifier
+                                .padding(end = 3.dp)
+                                .size(18.dp)
+                                .offset(y = 5.dp),
                         )
                     }
-                    Spacer(Modifier.height(2.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                        Column {
-                            Text(
-                                text = stringResource(R.string.calendar_last_record),
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontSize = 10.sp,
-                                    lineHeight = 12.sp,
-                                ),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = stats?.lastDate?.let { shortDayFormatter.format(it) } ?: "—",
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontSize = 15.sp,
-                                    lineHeight = 19.sp,
-                                ),
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = stringResource(R.string.calendar_usual),
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontSize = 10.sp,
-                                    lineHeight = 12.sp,
-                                ),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = stats?.usualRange?.let { "每${it.first}-${it.last}天" } ?: "—",
-                                style = MaterialTheme.typography.bodyLarge.copy(
-                                    fontSize = 15.sp,
-                                    lineHeight = 19.sp,
-                                ),
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        RhythmStat(
+                            label = stringResource(R.string.calendar_last_record),
+                            value = stats?.lastDate?.let { shortDayFormatter.format(it) } ?: "—",
+                            modifier = Modifier.weight(1f),
+                        )
+                        RhythmStat(
+                            label = stringResource(R.string.calendar_usual),
+                            value = stats?.usualRange?.let { "每${it.first}-${it.last}天" } ?: "—",
+                            modifier = Modifier.weight(1f),
+                        )
                     }
                 }
             }
             if (settings.showLongestGap) {
-                HorizontalDivider(
-                    modifier = Modifier.padding(vertical = 11.dp),
-                    color = com.mysecret.intimatetracker.ui.theme.Divider,
-                )
+                Spacer(Modifier.height(9.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(Modifier.height(10.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = stringResource(R.string.calendar_longest_gap),
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
-                        ),
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    Spacer(Modifier.weight(1f))
                     Text(
                         text = stats?.longestGapDays?.let { "$it 天" } ?: "—",
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            fontSize = 15.sp,
-                            lineHeight = 18.sp,
-                        ),
+                        style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
         }
+    }
+}
+
+/** 节奏卡的一列统计：小号灰色标签 + 大号数值。 */
+@Composable
+private fun RhythmStat(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(5.dp))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -824,7 +886,7 @@ private fun MonthPickerDialog(
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surface,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
         ) {
             Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                 Row(

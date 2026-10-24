@@ -118,7 +118,7 @@ fun StatisticsScreen(viewModel: StatisticsViewModel = hiltViewModel()) {
                 },
                 onPartner = viewModel::selectPartner,
             )
-            HorizontalDivider(color = com.mysecret.intimatetracker.ui.theme.Divider)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
             HorizontalPager(
                 state = pagerState,
@@ -216,7 +216,7 @@ private fun FilterChipBox(
                 .fillMaxWidth()
                 .height(56.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
                 .clickable { expanded = true }
                 .padding(start = 16.dp, end = 12.dp),
             contentAlignment = Alignment.CenterStart,
@@ -368,7 +368,7 @@ private fun StatCard(
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             Text(
@@ -490,7 +490,7 @@ private fun InitiatorTab(snapshot: StatsSnapshot) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(28.dp)
-                    .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp)),
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(8.dp)),
             ) {
                 snapshot.initiators.forEachIndexed { index, item ->
                     val weight = (item.count.toFloat() / total).coerceAtLeast(0.02f)

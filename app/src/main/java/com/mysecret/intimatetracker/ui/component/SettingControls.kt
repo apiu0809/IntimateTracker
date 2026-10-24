@@ -111,7 +111,7 @@ fun SettingSwitchRow(
             onCheckedChange = onCheckedChange,
             enabled = enabled,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color(0xFF0C1512),
+                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                 checkedTrackColor = MaterialTheme.colorScheme.primary,
                 uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -194,7 +194,7 @@ fun SettingSegmented(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(50))
             .padding(3.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {

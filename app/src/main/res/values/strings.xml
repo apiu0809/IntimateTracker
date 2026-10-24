@@ -46,6 +46,9 @@
     <string name="calendar_days_ago_partner">距上次与伴侣活动天数</string>
     <string name="calendar_last_record">上次记录</string>
     <string name="calendar_longest_gap">最长间隔</string>
+    <string name="calendar_ring_desc">距上次活动 %1$s</string>
+    <string name="calendar_ring_desc_over">距上次活动 %1$s，已超过你设定的长间隔</string>
+    <string name="calendar_ring_desc_none">还没有记录</string>
     <string name="calendar_usual">通常</string>
     <string name="calendar_no_records">这天没有记录</string>
     <string name="calendar_records_count">%1$d 条记录</string>
@@ -195,10 +198,12 @@
     <string name="more_prefs">偏好设置</string>    <string name="prefs_title">偏好设置</string>
     <string name="prefs_appearance">外观</string>
     <string name="prefs_theme_color">主题颜色</string>
-    <string name="prefs_preview_hint">拖动下方滑块自由调色</string>
-    <string name="prefs_hue">色相</string>
-    <string name="prefs_saturation">饱和度</string>
-    <string name="prefs_value">明度</string>
+    <string name="prefs_color_hint">选一个种子色，整套界面的颜色都由它推导出来</string>
+    <string name="prefs_color_custom">自定义</string>
+    <string name="prefs_color_wallpaper">跟随壁纸取色</string>
+    <string name="prefs_tonal_preview">色调预览</string>
+    <string name="prefs_amoled">纯黑背景</string>
+    <string name="prefs_amoled_summary">深色模式下把背景压成纯黑，OLED 更省电、对比更强</string>
     <string name="prefs_dark_mode">深色模式</string>
     <string name="prefs_mode_auto">自动</string>
     <string name="prefs_mode_light">浅色</string>

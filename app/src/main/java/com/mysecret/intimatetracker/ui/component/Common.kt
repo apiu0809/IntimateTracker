@@ -44,7 +44,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import android.provider.Settings
 import com.mysecret.intimatetracker.R
-import com.mysecret.intimatetracker.ui.theme.AccentPill
 
 @Composable
 fun EmptyState(text: String, modifier: Modifier = Modifier) {
@@ -169,7 +168,7 @@ fun AppFab(
             .size(58.dp)
             .pressScale(interactionSource)
             .clip(RoundedCornerShape(19.dp))
-            .background(AccentPill)
+            .background(MaterialTheme.colorScheme.primaryContainer)
             .clickable(
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
@@ -180,7 +179,7 @@ fun AppFab(
         Icon(
             imageVector = Icons.Filled.Add,
             contentDescription = contentDescription,
-            tint = MaterialTheme.colorScheme.primary,
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.size(26.dp),
         )
     }

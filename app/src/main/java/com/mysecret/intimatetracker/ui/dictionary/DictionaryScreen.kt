@@ -572,7 +572,7 @@ private fun DictionaryRow(
             .pressScale(interactionSource, pressedScale = if (dragging) 1f else 0.98f)
             .clip(cardShape)
             .background(
-                if (dragging) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
+                if (dragging) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceContainer,
             )
             .clickable(
                 interactionSource = interactionSource,

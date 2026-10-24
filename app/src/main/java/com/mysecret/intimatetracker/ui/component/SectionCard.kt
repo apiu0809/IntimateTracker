@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -43,8 +44,8 @@ fun SectionCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -81,7 +82,7 @@ fun PresetChip(
     val borderColor = if (selected) {
         MaterialTheme.colorScheme.primary
     } else {
-        MaterialTheme.colorScheme.outline
+        MaterialTheme.colorScheme.outlineVariant
     }
     Column(
         modifier = modifier
@@ -91,7 +92,7 @@ fun PresetChip(
                 color = if (selected) {
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
                 } else {
-                    MaterialTheme.colorScheme.surface.copy(alpha = 0f)
+                    Color.Transparent
                 },
                 shape = RoundedCornerShape(12.dp),
             )

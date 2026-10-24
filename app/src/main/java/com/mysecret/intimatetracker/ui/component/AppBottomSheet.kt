@@ -20,7 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /**
- * 统一的应用内底部面板：surface 底色、headlineSmall 标题、右上可选文字操作。
+ * 统一的应用内底部面板：一级容器底色、headlineSmall 标题、右上可选文字操作。
  * 筛选 / 简化输入 / 节奏详情共用，避免各页标题字号与内边距继续分叉。
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,7 +36,7 @@ fun AppBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Column(
             modifier = Modifier

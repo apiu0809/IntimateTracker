@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="background">#121212</color>
-    <color name="surface">#1E1E1E</color>
-    <color name="primary">#85B898</color>
+    <!-- 启动窗口底色：与 SeedScheme 为品牌薄荷种子生成的深色背景（neutral[6]）一致，
+         避免冷启动时先闪一下别的颜色。真实主题由 Compose 在首帧接管。 -->
+    <color name="background">#0C1513</color>
+    <color name="surface">#19211F</color>
+    <color name="primary">#6FD9C2</color>
     <color name="ic_launcher_background">#2E2E34</color>
 </resources>

@@ -66,6 +66,7 @@ import com.mysecret.intimatetracker.domain.model.Initiator
 import com.mysecret.intimatetracker.domain.model.Protection
 import com.mysecret.intimatetracker.ui.component.EmptyState
 import com.mysecret.intimatetracker.ui.component.ScreenScaffold
+import com.mysecret.intimatetracker.ui.theme.PartnerColors
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -277,8 +278,8 @@ private fun ValueCard(icon: ImageVector, label: String, value: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -306,8 +307,8 @@ private fun ChipCard(icon: ImageVector, label: String, values: List<String>) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -339,8 +340,8 @@ private fun StarsCard(icon: ImageVector, stars: Int) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -364,7 +365,7 @@ private fun StarsCard(icon: ImageVector, stars: Int) {
                         imageVector = if (index < stars) Icons.Filled.Star else Icons.Outlined.StarBorder,
                         contentDescription = null,
                         tint = if (index < stars) {
-                            com.mysecret.intimatetracker.ui.theme.StarColor
+                            PartnerColors.starColor()
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },
@@ -387,8 +388,8 @@ private fun PhotoCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

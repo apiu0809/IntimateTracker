@@ -1,13 +1,13 @@
 # TASK_STATE — Intimate Tracker
 
-> 快照时间：2026-10-25 03:20（Asia/Shanghai）
+> 快照时间：2026-10-25 05:05（Asia/Shanghai）
 > 用途：上下文告急时的交接文件；恢复工作请先读本文件，再读 `prd-v1.1.md`。
 
 ## 1. 任务目标
 
 按 `prd-v1.1.md` 实现 Android App「亲密记录 / Intimate Tracker」（Kotlin + Compose + Room + Hilt）。
 4 个 Sprint 均已于 2026-10-22 交付：**S1 骨架+数据层+字典/伴侣 → S2 记录表单+日历+历史 → S3 统计 9 页签 → S4 同步 v2+应用锁+导出**；
-当前版本 **v1.7.0**（versionCode 53，数据库 v4），2026-10-25 已发布（tag `v1.7.0`）：真机 24129PN74C（Android 17）与模拟器各 82 项仪器测试、57 项 JVM 单测全绿（见 §2.9）。上一版 v1.6.0（versionCode 52）同日发布。
+当前版本 **v1.8.0**（versionCode 54，数据库 v4），2026-10-25 发布（tag `v1.8.0`）：60 项 JVM 单测全绿；仪器测试沿用 v1.7.0 的 82 项基线（本次改动集中在 UI 层，未新增仪器用例）。v1.8.0 的三件事见 §2.10（主题引擎）、§2.11–2.12（节奏卡圆环与 1:1 版面）、§2.13（壁纸取色修复）。上一版 v1.7.0（versionCode 53）同日发布。
 
 已确认的四项产品决策：
 1. 范围裁剪：不做账号体系与增值模块，仅 WebDAV 文件同步
@@ -144,6 +144,66 @@ S4 已交付：WebDAV v2 同步（客户端/合并/设置页/测试）、应用�
 - [x] 测试：新增 `HistoryTruthPurgeTest` 6 项（伴侣 / 类型 / 地点+姿势+玩具 / 编辑回写 / 改名刷新 / 幽灵选项）；`MigrationTest` 增 3→4 回填与去外键用例、1→4 全链路；`DatabaseTest` 硬删伴侣断言由「级联清空」改为「保留 + 标记」
 - 验证：JVM 57 项全绿；`connectedDebugAndroidTest` 在**真机 24129PN74C（Android 17）**与模拟器 Pixel_10_Pro 上各 **82 项全绿**（0 failure / 0 error，用时 3.7s / 5.1s）
 
+## 2.10 主题引擎重做：移植 LSPatch 的取色逻辑（2026-10-25）
+
+- 参考对象：`https://github.com/JingMatrix/LSPatch` 及其共享 UI 库 `JingMatrix/Vector` 的 `manager-ui`
+  （`org.matrix.vector.ui.theme.SeedScheme` / `ThemeMode` / `AmoledScheme`、`ui.appearance.AppearanceSheet`、`ui.ColorWheel`）
+- [x] 取色逻辑：`ui/theme/SeedScheme.kt` —— 在 **CIE LCh**（思路同 Google HCT）里固定种子的色相与彩度、只沿 L* 取色调，
+      每个色调二分查找 sRGB 色域内最大彩度（12 次迭代），一次推导出整套 M3 配色；不引入新依赖
+- [x] 参数取舍：强调色梯子彩度下限用 Material tonal spot 的 **36**（上游 Vector 用 48，会把品牌薄荷 `#6FB6A6`（C\\*=26）推成霓虹青）；
+      secondary 16 / tertiary 24（+60°）/ neutral 4 / variant 8 与上游一致；error 恒为红（色相 25、彩度 84）
+- [x] 方案生成：`SeedScheme.of(seed, dark)` + `toAmoled()`（`AmoledScheme.kt` 同源实现，并入 `SeedScheme.kt`）；
+      浅色下 `surfaceContainer` 取 tone 100（纯白）而非 M3 默认 94，否则卡片会比页面暗
+- [x] 取色来源：跟随壁纸（`dynamicColorScheme`，仅 API 31+）/ 8 个预设种子 / 色轮（角度=色相、半径=彩度，320² 离屏渲染 + 缓存）
+- [x] 外观界面：`ui/prefs/PreferencesScreen.kt` 重写 —— 明暗三段、色源圆点（FlowRow 两行铺满）、色轮、十级色调预览、纯黑开关；
+      上架 LSPatch 的 `AppearanceSheet` 布局意图，保留本项目的设置行排版
+- [x] 偏好与迁移：`ThemePrefs` 增 `amoled` / `dynamicColor`，`seedArgb` 复用老键 `theme.accent_argb`（老用户存下的强调色直接成为种子色）
+- [x] 退役手写色板：删掉 `Background` / `Surface` / `SurfaceAlt` / `SurfaceHigh` / `SurfaceVariant` / `AccentPill` / `AccentSoft` /
+      `TextPrimary|Secondary|Tertiary` / `Outline` / `Divider` / `Danger` / `StarColor` / `AmbientColors`，全应用改读 Material 角色；
+      卡片/面板/底部面板改用 `surfaceContainer` / `surfaceContainerHigh`，装饰性描边改用 `outlineVariant`（`outline` 只留给输入框等交互件）
+- [x] 观感收口：系统栏图标跟随明暗、字体加负字距、圆角整体放大一档、`Switch` 的选中拇指色改 `onPrimary`、FAB 图标改 `onPrimaryContainer`、
+      启动窗口底色对齐生成的深色背景（`#0C1513`）
+- 已知限制：material3 **1.4.0** 的 `MaterialExpressiveTheme` / `MotionScheme` 仍是 `internal`，无法直接使用（Vector 用的是更新版本），
+  因此这次只换色板与形状，没有引入表达式动效方案
+- 验证：debug/release 均构建通过；真机 24129PN74C 上逐一截图确认（浅色/深色/纯黑、预设色、色轮拖动、跟随壁纸、底部面板、记录表单），
+  并用 Pillow 采样确认卡片底色 `#101010`、描边 `#3C4946` 等实际像素值
+
+## 2.11 节奏卡圆环：轨道 + 进度弧（2026-10-25）
+
+- 问题：原来是「58dp 圆 + 5dp 整圈描边」，三档配色 `onSurfaceVariant / primary / error`，即**整圈永远满、状态全靠色相**。种子色与壁纸取色上线后，暖色种子（珊瑚 `#E0603A` → 主色 `#AC3313`）会与错误色 `#BF0031` 撞成一片红；无数据时还画一整圈灰环，读起来像「100%」
+- [x] 形状：`Canvas` 画轨道（`surfaceContainerHighest`，M3 进度轨道的标准角色）+ 进度弧（4dp，圆头，12 点起顺时针），弧长 = `RhythmCalculator.arcFraction(days, longGapDays)`；满格端点取 `longGapDays`，与 `RhythmBand.ALERT` 边界重合
+- [x] 纯函数 `arcFraction`：null（无记录）→ 0；0 天 → `MIN_ARC_FRACTION`(0.06) 表示「刚刚」；`longGapDays<=0` 兜底为 1；超过阈值封顶 1，不再绕第二圈。新增 3 条单测
+- [x] 颜色：`rhythmRingColor(settings, band)` —— 常态 `primary`、偏长 `tertiary`、超期 `error`，`colorize=false` 一律 `primary`。**tertiary 是该方案的关键**：tonal spot 配方里它恒为主色 +60°，任何种子下都与主色不同色相；error 恒为红（色相 25 / 彩度 84）
+- [x] 冗余编码：弧长（形状）→ 数字与单位（文字）→ 色相（只加强）；`clearAndSetSemantics` 给整块一句「距上次活动 17天，已超过你设定的长间隔」，避免读屏念零散数字
+- [x] 顺带：`displayUnit` 之前定义了但全项目没人调用，现在把「天 / 周」显示在数字右下；`animateColorAsState` + spring 弧长，`rememberAnimationsEnabled()` 为 false 时用 `snap()`
+- 验证：真机三档实测（17 天全红 / 10 天 tertiary 71% / 3 天 primary 21%）、深色 + 纯黑的轨道可见性、清空后空态；JVM 单测 60 项全绿
+- 证据：`evidence/ring-design-proposal.png`（离线方案图）、`evidence/ring-01..05*.png`（真机）
+
+## 2.12 节奏卡 1:1 复刻参考截图（2026-10-25）
+
+- 目标：按用户提供的参考截图（另一应用 `centertable.ad`）**逐像素**复刻节奏卡的版面，**颜色仍由本项目的种子方案决定**
+- 方法：参考图 1200×2670 / density 3.25；用 PIL 扫描亮度跳变定位卡片边框、圆环、文字墨迹框与分隔线，÷3.25 换算成 dp；实现后再对真机截图跑同一套量测脚本（`%TEMP%\measure_card.py`），逐项比 delta，迭代 4 轮收敛
+- 量到的参数（dp）：卡片 337 宽 / 136 高、圆角 12、边框 1；圆环 60 外径 / 6 环宽、左内距 16；环与文字 16；文字列内距 16/12/14；标题→列 8、标签→值 5、列→分隔线 9、分隔线→底行 10；字号 标题 15 / 列标签 11 / 列值 15 / 底行 12 / 环内数字 24（= `headlineMedium` 原值）；信息图标 18dp 且比标题行中线低 5dp
+- 收敛结果（真机 vs 参考，px）：卡宽 0、卡高 +1；标题 dx0/dy-1、列标签 dy-1、列值 dy-1、底行 dy0/+1、图标 dy-1 —— 全部 ≤1px（0.3dp）
+- 残留差异只来自字体：数字与拉丁字符用 Plus Jakarta（参考图用系统字体），因此 `10月22日` 比 `10月19日` 宽 15px；繁体 `數` 比简体 `数` 宽 6px。这是字形差异，不是版面差异
+- 副作用：环内不再显示「天/周」（参考稿没有），单位只在 `contentDescription` 里出现
+- 证据：`evidence/ring-06-ref-card.png`（参考）、`ring-07-layout-dark.png`、`ring-08-layout-light.png`
+
+## 2.13 修复「跟随壁纸」不生效（2026-10-25）
+
+- 现象：切换多张壁纸，应用配色不变
+- 诊断（真机 24129PN74C / Android 17 / API 37）：
+  1. `cmd overlay list android` 显示壁纸配色覆盖层 `com.miui.wallpaper.overlay.customize` 是 **禁用**的；框架层 `android:color/system_accent*` 因此是 AOSP 默认值
+  2. 实测：壁纸是洋红（`WallpaperManager.getWallpaperColors()` 返回 `#E86088`），而 `dynamicDarkColorScheme` 给的是蓝紫，`#BEC7D9` 与 AOSP 默认 secondary `#BEC6DC` 基本一致 → **这台机器上系统动态配色根本不跟壁纸**
+  3. 另有本项目自己的 bug：`remember(seed, darkTheme, amoled, dynamicColor)` 里没有任何会随壁纸变化 key，即便配色调了也不会重算
+  4. `WallpaperManager.getDrawable()` 需要 `READ_EXTERNAL_STORAGE`（实测 SecurityException）；`getWallpaperColors()` 不需要任何权限，且会触发系统现场提取
+- [x] 取色改成：`getWallpaperColors(FLAG_SYSTEM).primaryColor` → 当作种子交给 `SeedScheme` 推导整套配色；取不到才回落到 `dynamicColorScheme`（API 31+）/ 品牌种子
+- [x] 失效信号：`OnColorsChangedListener` + `ON_RESUME` 计数器 → 作为 `remember` 的 key；壁纸色缓存进 SharedPreferences（`theme` 文件），冷启动首帧即用，不闪
+- [x] 顺带：偏好设置里的「色调预览」跟随壁纸时展示壁纸种子的梯子（不再混排方案角色）；壁纸圆点的读屏文案修正为 `prefs_color_wallpaper`
+- 验证：真机实测 —— 深色 `#181113` / 浅色 `#FEF8F9` 均带壁纸的粉色；「恢复默认」回到薄荷（`#F3FCF9`），再点「跟随壁纸」回到粉色（`#FEF8F9`）；启动日志显示解析在首帧与 `ON_RESUME` 各跑一次
+- 限制：MIUI 的换壁纸入口没有可用的 launcher activity，`am start` 打不开（`ACTION_CHANGE_WALLPAPER` / `SET_WALLPAPER` 都无法解析），所以「换完壁纸立即刷新」这一步只能靠 `ON_RESUME` 计数器的日志证据 + 代码路径确认，未做换壁纸的实拍对比
+- 证据：`evidence/wallpaper-01-dark.png`、`wallpaper-02-light.png`
+
 ## 3. 剩余事项（2026-10-24 按代码核对后重写）
 
 > 旧版本节停留在 S1 阶段。核对后确认已落地、可从待办移除的：S2/S3/S4 全部功能、伴侣头像（导入/中心裁切 512px/更换/移除）、
@@ -237,6 +297,8 @@ git add -A; git commit -m "..."; git push
 | 环境 | `C:\Program Files\Java\jdk-17.0.5` 是空壳（无 bin），必须用 `E:\...\Android Studio\jbr`；`gradle.properties` 已固定 |
 | 环境 | 本机默认沙箱会拦截 git 的 schannel 和 Gradle 写盘；当前会话已是 danger-full-access，新会话若回退需重新申请 |
 | 编译告警 | `hiltViewModel` 提示迁移到 `androidx.hilt.lifecycle.viewmodel.compose`（未处理，不影响构建）；`TabRow` 已换 `PrimaryTabRow` |
+| 外观 | `material3 1.4.0` 的 `MaterialExpressiveTheme` / `MotionScheme` 仍是 `internal`，不能直接用；想要表达式动效得先升 Compose BOM（Vector 用的是更新版本）。当前只换色板 / 形状 / 字距 |
+| 外观 | 跟随壁纸取色需 API 31+（`minSdk 26`），低于此版本自动回落到种子色；`dynamic*ColorScheme` 已用就地 `Build.VERSION.SDK_INT` 守卫（lint 友好） |
 | 数据 | 关联表只对 `record` 级联；伴侣 / 字典行被物理删除后**关联与名字快照保留**（v4 历史真相，`HistoryTruthPurgeTest` 锁定）；软删同样保留 |
 | 迁移 | DB version=4，迁移集中在 `Migrations.kt`（`Migrations.ALL`），schema 已导出 `1.json` ~ `4.json`；再加列必须补 Migration 并导出 schema |
 | 测试 | 2026-10-25 真机 24129PN74C（Android 17）+ 模拟器 Pixel_10_Pro：`connectedDebugAndroidTest` 各 82 项全绿（0 failure）；JVM 57 项全绿 |

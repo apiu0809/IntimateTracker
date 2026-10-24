@@ -40,7 +40,7 @@ object PartnerColors {
     @Composable
     fun isLightTheme(): Boolean = MaterialTheme.colorScheme.background.luminance() > 0.5f
 
-    /** 记录行/详情用的星级金色：浅色下加深。 */
+    /** 记录行/详情用的星级金色：固定金色，不随种子变化（五颗星不该变成五颗蓝星）；浅色下加深。 */
     @Composable
-    fun starColor(): Color = if (isLightTheme()) Color(0xFF9A7418) else Color(0xFFE8B75A)
+    fun starColor(): Color = if (isLightTheme()) Color(0xFF9A7418) else Color(0xFFF0BE4E)
 }

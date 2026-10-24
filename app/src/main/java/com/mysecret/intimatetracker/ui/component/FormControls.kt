@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.mysecret.intimatetracker.ui.theme.PartnerColors
 
 /**
  * 表单输入框：与「新增伴侣」一致的外框样式（8dp 圆角、18sp 正文、浮动标签）。
@@ -162,7 +163,7 @@ fun StarRating(value: Int, onSelect: (Int) -> Unit, max: Int = 5) {
                     imageVector = if (starValue <= value) Icons.Filled.Star else Icons.Outlined.StarBorder,
                     contentDescription = "$starValue 星",
                     tint = if (starValue <= value) {
-                        com.mysecret.intimatetracker.ui.theme.StarColor
+                        PartnerColors.starColor()
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },

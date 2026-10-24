@@ -4,7 +4,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -26,28 +25,48 @@ class ThemeViewModel @Inject constructor(
     val prefs: StateFlow<ThemePrefs> = settings.observeTheme()
         .stateIn(viewModelScope, SharingStarted.Eagerly, ThemePrefs())
 
-    fun setAccent(argb: Int?) {
-        viewModelScope.launch { settings.saveAccent(argb) }
+    /** 设种子色；传 null 回到品牌默认薄荷。 */
+    fun setSeed(argb: Int?) {
+        viewModelScope.launch { settings.saveSeed(argb) }
     }
 
     fun setMode(mode: ThemeMode) {
         viewModelScope.launch { settings.saveThemeMode(mode) }
     }
+
+    fun setAmoled(enabled: Boolean) {
+        viewModelScope.launch { settings.saveAmoled(enabled) }
+    }
+
+    /** 是否跟随壁纸取色（Android 12+）。 */
+    fun setDynamicColor(enabled: Boolean) {
+        viewModelScope.launch { settings.saveDynamicColor(enabled) }
+    }
 }
 
-/** 全局主题包装：读取偏好、跟随系统或强制深浅色、应用自定义强调色。 */
+/** 由偏好推出此刻是否深色。AUTO 跟随系统，其余两种强行指定。 */
+@Composable
+fun rememberDarkTheme(mode: ThemeMode): Boolean {
+    val systemDark = isSystemInDarkTheme()
+    return when (mode) {
+        ThemeMode.AUTO -> systemDark
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
+}
+
+/** 全局主题包装：读取偏好、跟随系统或强制深浅色、用种子色生成整套方案。 */
 @Composable
 fun ThemedApp(
     viewModel: ThemeViewModel = hiltViewModel(),
     content: @Composable () -> Unit,
 ) {
     val prefs by viewModel.prefs.collectAsState()
-    val systemDark = isSystemInDarkTheme()
-    val dark = when (prefs.mode) {
-        ThemeMode.AUTO -> systemDark
-        ThemeMode.LIGHT -> false
-        ThemeMode.DARK -> true
-    }
-    val accent = prefs.accentArgb?.let { Color(it) } ?: Accent
-    IntimateTrackerTheme(darkTheme = dark, accent = accent, content = content)
+    IntimateTrackerTheme(
+        darkTheme = rememberDarkTheme(prefs.mode),
+        seedArgb = prefs.seedArgb,
+        amoled = prefs.amoled,
+        dynamicColor = prefs.dynamicColor,
+        content = content,
+    )
 }

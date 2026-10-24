@@ -201,7 +201,7 @@ fun AddRecordScreen(
                                 modifier = Modifier
                                     .size(72.dp)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
                                     .clickable {
                                         picker.launch(
                                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
@@ -491,8 +491,8 @@ private fun FormCard(title: String, icon: ImageVector? = null, content: @Composa
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
     ) {
         Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -590,7 +590,7 @@ private fun PartnerChips(
                         color = if (isSelected) {
                             MaterialTheme.colorScheme.primary
                         } else {
-                            MaterialTheme.colorScheme.outline
+                            MaterialTheme.colorScheme.outlineVariant
                         },
                         shape = RoundedCornerShape(12.dp),
                     )

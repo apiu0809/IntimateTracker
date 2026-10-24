@@ -151,6 +151,27 @@ class RhythmCalculatorTest {
     }
 
     @Test
+    fun `arc is empty without records and tiny at zero days`() {
+        assertEquals(0f, RhythmCalculator.arcFraction(null, 14))
+        assertEquals(RhythmCalculator.MIN_ARC_FRACTION, RhythmCalculator.arcFraction(0, 14))
+        assertEquals(RhythmCalculator.MIN_ARC_FRACTION, RhythmCalculator.arcFraction(1, 99))
+    }
+
+    @Test
+    fun `arc fills up to the long gap threshold and then caps`() {
+        assertEquals(0.5f, RhythmCalculator.arcFraction(7, 14))
+        assertEquals(1f, RhythmCalculator.arcFraction(14, 14))
+        assertEquals(1f, RhythmCalculator.arcFraction(17, 14))
+        assertEquals(1f, RhythmCalculator.arcFraction(40, 14))
+    }
+
+    @Test
+    fun `arc never divides by zero`() {
+        assertEquals(1f, RhythmCalculator.arcFraction(3, 0))
+        assertEquals(1f, RhythmCalculator.arcFraction(3, -5))
+    }
+
+    @Test
     fun `partner only and exclude solo combine`() {
         val entries = listOf(
             entry(at(6), types = listOf("自慰")),

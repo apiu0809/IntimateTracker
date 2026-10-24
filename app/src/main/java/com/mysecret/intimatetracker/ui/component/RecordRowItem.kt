@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.mysecret.intimatetracker.data.db.RecordListRow
+import com.mysecret.intimatetracker.ui.theme.PartnerColors
 import java.io.File
 
 /**
@@ -65,8 +66,8 @@ fun RecordRowItem(
         onClick = onClick,
         modifier = modifier.fillMaxWidth().pressScale(interactionSource),
         shape = shape,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         interactionSource = interactionSource,
     ) {
         Row(
@@ -148,7 +149,7 @@ fun RecordRowItem(
                     Icon(
                         imageVector = Icons.Filled.Star,
                         contentDescription = null,
-                        tint = com.mysecret.intimatetracker.ui.theme.StarColor,
+                        tint = PartnerColors.starColor(),
                         modifier = Modifier.size(16.dp),
                     )
                     Text(

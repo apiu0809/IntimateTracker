@@ -321,7 +321,7 @@ private fun BottomBar(
 ) {
     NavigationBar(
         modifier = modifier.navigationBarsPadding(),
-        containerColor = com.mysecret.intimatetracker.ui.theme.Surface,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
     ) {
         tabs.forEach { tab ->
@@ -346,7 +346,7 @@ private fun BottomBar(
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = MaterialTheme.colorScheme.primary,
                     selectedTextColor = MaterialTheme.colorScheme.primary,
-                    indicatorColor = com.mysecret.intimatetracker.ui.theme.AccentPill,
+                    indicatorColor = MaterialTheme.colorScheme.secondaryContainer,
                     unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 ),
