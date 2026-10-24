@@ -7,8 +7,7 @@
 
 按 `prd-v1.1.md` 实现 Android App「亲密记录 / Intimate Tracker」（Kotlin + Compose + Room + Hilt）。
 4 个 Sprint 均已于 2026-10-22 交付：**S1 骨架+数据层+字典/伴侣 → S2 记录表单+日历+历史 → S3 统计 9 页签 → S4 同步 v2+应用锁+导出**；
-当前版本 **v1.6.0**（versionCode 52），2026-10-25 已真机复跑 75 项仪器测试 + 57 项 JVM 单测全绿（见 §2.8），并于 2026-10-25 发布（tag `v1.6.0`）。
-工作区已升级到 **数据库 v4**（§2.9，历史真相强化），尚未发版。
+当前版本 **v1.7.0**（versionCode 53，数据库 v4），2026-10-25 已发布（tag `v1.7.0`）：真机 24129PN74C（Android 17）与模拟器各 82 项仪器测试、57 项 JVM 单测全绿（见 §2.9）。上一版 v1.6.0（versionCode 52）同日发布。
 
 已确认的四项产品决策：
 1. 范围裁剪：不做账号体系与增值模块，仅 WebDAV 文件同步
@@ -134,7 +133,7 @@ S4 已交付：WebDAV v2 同步（客户端/合并/设置页/测试）、应用�
 - [x] UI 统一（2026-10-25）：四类字典新增 / 编辑弹窗的输入框、下拉选项框改为与「新增伴侣」同一套外框组件（`ui/component/FormControls.kt` 的 `FormTextField` / `FormSelectField`：8dp 圆角、18sp 正文、浮动标签），伴侣页同步改用同一组件；省略旧的下划线输入框 / 强度下划线下拉
 - 验证：`testDebugUnitTest` 57 项全绿；真机 24129PN74C `connectedDebugAndroidTest` 75 项全绿（DictionaryRepositoryTest 18 / FilterPruneTest 9 / RecordRepositoryTest 8）
 
-## 2.9 历史真相强化：彻底删除也不移除关联（2026-10-25，DB v4，未发布）
+## 2.9 历史真相强化：彻底删除也不移除关联（2026-10-25，v1.7.0，DB v4）
 
 - [x] 数据层：5 张关联表新增 `label` 名字快照，并**去掉指向 `partner` / 4 张字典表的外键**（只保留 `record` 级联）；`AppDatabase.version = 4`，`Migrations.MIGRATION_3_4` 重建表并用父表当前名字回填，schema 导出 `4.json`
 - [x] 写入口径：`RecordRepository.save` 对每个关联 id 先取父行当前名字（含软删行），父行已被物理删除则沿用该记录原有快照；改名（`PartnerRepository.save` / `DictionaryRepository.update` / `restoreAndUpdate`）同事务刷新所有历史关联的 `label`
