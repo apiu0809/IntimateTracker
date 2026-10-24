@@ -25,7 +25,7 @@
   - Gradle 骨架（`gradle/libs.versions.toml`、`gradlew`）、`gradle.properties`（含 `android.disallowKotlinSourceSets=false`、`org.gradle.java.home`）
   - 深色主题 + 5 tab 底部导航（简体）
   - 16 张表 Entity/DAO/AppDatabase（外键 CASCADE、软删、索引、schema 导出到 `app/schemas/`）
-  - 种子数据 11 类型 / 23 地点 / 6 姿势（幂等）
+  - 种子数据 10 类型 / 23 地点 / 0 内置姿势（幂等）
   - 字典管理（内置可隐藏、自建可删、姿势带强度）
   - 伴侣列表 / 新增 / 编辑 / 归档 / 软删
   - 测试：JVM 8 项 + 仪器 7 项，全部通过
@@ -96,13 +96,15 @@ S4 已交付：WebDAV v2 同步（客户端/合并/设置页/测试）、应用�
 ## 3. 剩余事项（2026-10-24 按代码核对后重写）
 
 > 旧版本节停留在 S1 阶段。核对后确认已落地、可从待办移除的：S2/S3/S4 全部功能、伴侣头像（导入/中心裁切 512px/更换/移除）、
-> 简化输入（已改为记录表单内 `SimplifiedInputSheet`，非独立设置页）、偏好设置、应用锁、WebDAV、导出/清空、Room v2 迁移、应用图标。
-> 下表只保留**核对后仍成立**的项。
+> 简化输入（已改为记录表单内 `SimplifiedInputSheet`）、偏好设置、应用锁、WebDAV、导出/清空、Room v2 迁移、应用图标。
+>
+> 2026-10-24 已修文档：`prd-v1.1.md` 表数 13 → **16**、种子 11/23/6 → **10/23/0**、§4.1 类型清单（去「主动/被动」、补「乳交」）、
+> §5.8 简化输入形态（表单内弹层）；`README.md`「已知限制」按实际重写（删 Room v1 / 头像 / 删照片三条过期项）。
+>
+> 下表只保留**尚未处理**的项。
 
 | 事项 | 现状 / 依据 |
 |---|---|
-| `prd-v1.1.md` 表数表述不一致 | §10 写「13 表」，DDL 仅 12 个 `CREATE TABLE`，实现 **16 表**（README 已写 16）→ 需统一 |
-| `README.md`「已知限制」过期 | 仍写「Room version 1、无 Migration」「伴侣头像未实现」「单张照片删除未实现」；实际 DB v2 + `Migrations.ALL`、头像已实现、`RecordDetailScreen` 可删照片 |
 | 应用内语言切换 | 未接 `AppCompatDelegate.setApplicationLocales`（全仓 grep 无调用），当前跟随系统语言 |
 | 产物 / 包体配置 | 仅 `arm64-v8a`（`splits.abi`，可 `-PwithX86` 额外出 x86_64）；未开 R8/minify |
 | 生物识别成功路径 | 仍缺真机验证记录（instrumentation 不覆盖 BiometricPrompt） |
@@ -189,12 +191,11 @@ git add -A; git commit -m "..."; git push
 | 测试 | 仪器测试 2026-10-24 真机 38 项全绿；模拟器 AEHD 可用但需完整权限 |
 | 测试（真机） | MIUI 每次 ADB 安装弹「USB 安装提示」，10 秒内不点「继续安装」即 `INSTALL_FAILED_USER_RESTRICTED`；跑 `connectedDebugAndroidTest` 需盯手机确认 |
 | 数据 | pm clear 后旧记录仍可能出现（WAL/文件残留），验证前用 **卸载重装** 才是干净状态 |
-| 规格 | `prd-v1.1.md` §10 "13 表"与实现（16 表）不一致，待修正 |
 | 隐私 | 真实记录、昵称与照片**禁止入库** |
 
 ## 8. 下一步建议
 
-1. **先补文档**（即 §3 前两条）：`prd-v1.1.md` 表数统一为 16、`README.md` 已知限制按实际更新
-2. **回归口径**：改动后跑 `.\gradlew.bat testDebugUnitTest` + 真机 `connectedDebugAndroidTest`（38 项）；真机注意 MIUI 安装弹框 10 秒内点「继续安装」
+1. **回归口径**：改动后跑 `.\gradlew.bat testDebugUnitTest`（55 项）+ 真机 `connectedDebugAndroidTest`（38 项）；真机注意 MIUI 安装弹框 10 秒内点「继续安装」
+2. **保持文档同步**：功能或数据模型再变时同步 `prd-v1.1.md` / `README.md` / 本文件（三份文档已于 2026-10-24 对齐 v1.5.9）
 3. **发版**：`powershell -ExecutionPolicy Bypass -File tools\publish_release.ps1 -Version vX.Y.Z`，同步更新 `CHANGELOG.md` / `更新日志.md` 并打 `vX.Y.Z` tag
 4. **可选增强**：开 R8 + 体积优化、补 x86_64 包、语言切换接系统 API、生物识别真机验证、清理未引用文案

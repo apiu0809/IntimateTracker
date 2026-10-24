@@ -127,11 +127,10 @@ powershell -ExecutionPolicy Bypass -File tools\publish_release.ps1 -Version v1.5
 
 ## 已知限制
 
-- 仅提供 `arm64-v8a`；未开启 R8 混淆
-- Room 仍为 version 1，升级只做启动时清理，无正式 Migration
-- 伴侣头像上传、单张照片删除 UI 未实现
+- 仅提供 `arm64-v8a`（调试可用 `-PwithX86` 额外出 x86_64 包）；未开启 R8 混淆
+- 升级迁移只保留正向路径（v1 → v2，见 `Migrations.kt`），不支持降级
 - 应用内语言切换未接 `AppCompatDelegate.setApplicationLocales`（跟随系统）
-- 生物识别成功路径未在真机验证（模拟器无指纹）
+- 生物识别成功路径无自动化覆盖（instrumentation 不触达 `BiometricPrompt`），需真机手测
 
 ## 隐私
 
