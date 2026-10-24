@@ -1,6 +1,6 @@
 # TASK_STATE — Intimate Tracker
 
-> 快照时间：2026-10-22 00:25（Asia/Shanghai）
+> 快照时间：2026-10-24 22:55（Asia/Shanghai）
 > 用途：上下文告急时的交接文件；恢复工作请先读本文件，再读 `prd-v1.1.md`。
 
 ## 1. 任务目标
@@ -65,7 +65,7 @@ S2 已全部交付：记录表单（14 字段 + 照片 + 模板 + 简化输入�
 - [x] WebDavClientFactory 可注入（便于假实现测试）
 - [x] 同步测试修复：根因是 unBlocking 尾表达式返回 Boolean/Long 导致 JUnit 报 should be void，加 : Unit + ssertEquals(5_000L, …) 后通过；SyncFlowTest 3 项覆盖 首次上传 / ETag 短路 / 远端较新合并
 - [x] WebDAV 设置页：URL/账号/密码/测试连接/立即同步/状态与上次同步时间（密码暂存 settings 明文，待加密）
-- [ ] SyncFlowTest 仍 initializationError（已改用新类名重写，问题依旧；推测与测试类加载/依赖有关），同步内核暂无自动测试
+- [x] SyncFlowTest 4 项全绿（2026-10-24 真机复跑确认；此前 initializationError 已随类重写消失），同步内核已有自动测试
 - [x] 应用锁：AppLockGate + BiometricPrompt(BIOMETRIC_WEAK or DEVICE_CREDENTIAL)，More 页开关，默认关闭
 - [x] 导出：zip（db+photos）写入 MediaStore 下载/IntimateTracker
 - [x] 清空数据：clearAllTables + 删除 images/sync 缓存（二次确认弹窗）
@@ -75,6 +75,22 @@ S2 已全部交付：记录表单（14 字段 + 照片 + 模板 + 简化输入�
 
 S4 已交付：WebDAV v2 同步（客户端/合并/设置页/测试）、应用锁（生物识别+设备凭据）、导出/清空、FLAG_SECURE、5 分钟重新上锁、密码加密存储、英文资源。
 仪器测试 30 项全绿；构建通过（APK 约 20MB）。
+
+## 2.6 真机复跑（2026-10-24 22:45，v1.5.9）
+
+- 设备：**24129PN74C**（Xiaomi，Android 17，adb 序列 `f2c6e979`），真实机型（非模拟器）
+- `.\gradlew.bat connectedDebugAndroidTest` → **38 项全绿**，`BUILD SUCCESSFUL in 12s`（用例执行 2.35s）
+  - DatabaseTest 7 / PhotoRepositoryTest 3 / RecordRepositoryTest 6 / RhythmSettingsPersistenceTest 3 /
+    SettingsAndTemplateTest 5 / StatsGoldenTest 6 / SyncFlowTest 4 / WebDavClientTest 4
+  - 报告：`app/build/reports/androidTests/connected/debug/index.html`
+- 修正 2 处**过期断言**（实现已演进、测试未跟，非产品缺陷）：
+  - `DatabaseTest`：内置类型 **9 → 10**（与 JVM `SeedDataTest` 对齐，新增「乳交」），方法名改为 `seed_writes_10_types_23_locations_0_positions`
+  - `SyncFlowTest.first_sync_uploads_archive`：改断言同步 v2 布局 `IntimateTracker/current.zip` + `IntimateTracker/history/backup-<yyyyMMdd>.zip`，原断言在找旧根目录 `backup-*.zip`
+- 结论：`SyncFlowTest` 的 initializationError 已消失（4/4 通过），§2.4 遗留条目已勾掉
+- 真机环境坑（复跑前必看）：
+  1. **MIUI 每次 ADB 安装弹「USB 安装提示」**，10 秒内不点「继续安装」自动拒绝 → UTP 报 `INSTALL_FAILED_USER_RESTRICTED: Install canceled by user`；跑测试时要盯手机点确认，或用脚本轮询 `mCurrentFocus` 命中 `AdbInstallActivity` 后 `input tap`
+  2. 设备残留**旧签名包** → `INSTALL_FAILED_UPDATE_INCOMPATIBLE`，先 `adb uninstall com.mysecret.intimatetracker`（`.test` 同理）
+  3. `adb` 不在 PATH，统一用 `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe`
 
 ## 3. 未完成事项
 
@@ -136,7 +152,9 @@ $env:JAVA_HOME="E:\Program Files\Android\Android Studio\jbr"
 # JVM 单测（8 项）
 .\gradlew.bat testDebugUnitTest --console=plain
 
-# 仪器测试（需模拟器在线，7 项）
+# 仪器测试（38 项）
+# 真机：先 adb devices 确认在线；MIUI 会弹「USB 安装提示」，须在 10 秒内点「继续安装」，否则安装阶段失败
+# 模拟器：
 $sdk="$env:LOCALAPPDATA\Android\Sdk"
 Start-Process "$sdk\emulator\emulator.exe" -ArgumentList "-avd","Pixel_10_Pro","-no-window","-no-audio","-no-snapshot","-no-boot-anim","-gpu","swiftshader_indirect"
 & "$sdk\platform-tools\adb.exe" wait-for-device
@@ -164,7 +182,8 @@ git add -A; git commit -m "..."; git push
 | 编译告警 | `hiltViewModel` 提示迁移到 `androidx.hilt.lifecycle.viewmodel.compose`（未处理，不影响构建）；`TabRow` 已换 `PrimaryTabRow` |
 | 数据 | 软删伴侣时**保留**交叉表关联（有意为之，历史记录需要）；硬删才 CASCADE —— 已有测试锁定，勿随意改 |
 | 迁移 | DB version=1，尚未写 Migration；后续加表必须补 |
-| 测试 | 仪器测试依赖模拟器；本机 AEHD 可用但需完整权限 |
+| 测试 | 仪器测试 2026-10-24 真机 38 项全绿；模拟器 AEHD 可用但需完整权限 |
+| 测试（真机） | MIUI 每次 ADB 安装弹「USB 安装提示」，10 秒内不点「继续安装」即 `INSTALL_FAILED_USER_RESTRICTED`；跑 `connectedDebugAndroidTest` 需盯手机确认 |
 | 数据 | pm clear 后旧记录仍可能出现（WAL/文件残留），验证前用 **卸载重装** 才是干净状态 |
 | 规格 | `prd-v1.1.md` §10 "13 表"与实现（16 表）不一致，待修正 |
 | 隐私 | 真实记录、昵称与照片**禁止入库** |

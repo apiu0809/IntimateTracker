@@ -62,7 +62,9 @@ class SyncFlowTest {
         val result = sync.sync(config)
 
         assertTrue(result is SyncResult.Success)
-        assertTrue(dav.files.keys.any { it.startsWith("IntimateTracker/backup-") && it.endsWith(".zip") })
+        // v2 布局：根目录 current.zip + 每日历史备份
+        assertTrue(dav.files.keys.contains("IntimateTracker/current.zip"))
+        assertTrue(dav.files.keys.any { it.startsWith("IntimateTracker/history/backup-") && it.endsWith(".zip") })
         assertTrue((db.settingsDao().get(SyncManager.KEY_ETAG) ?: "").isNotEmpty())
     }
 

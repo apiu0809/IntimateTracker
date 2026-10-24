@@ -38,13 +38,13 @@ class DatabaseTest {
     }
 
     @Test
-    fun seed_writes_9_types_23_locations_0_positions() = runBlocking {
+    fun seed_writes_10_types_23_locations_0_positions() = runBlocking {
         Seeder.seed(db)
 
-        assertEquals(9, db.sexTypeDao().count())
+        assertEquals(10, db.sexTypeDao().count())
         assertEquals(23, db.locationDao().count())
         assertEquals(0, db.positionDao().count())
-        assertEquals(9, db.sexTypeDao().countBuiltin())
+        assertEquals(10, db.sexTypeDao().countBuiltin())
         assertEquals(23, db.locationDao().countBuiltin())
         assertEquals(0, db.positionDao().countBuiltin())
     }
@@ -54,7 +54,7 @@ class DatabaseTest {
         Seeder.seed(db)
         Seeder.seed(db)
 
-        assertEquals(9, db.sexTypeDao().count())
+        assertEquals(10, db.sexTypeDao().count())
         assertEquals(23, db.locationDao().count())
         assertEquals(0, db.positionDao().count())
     }
