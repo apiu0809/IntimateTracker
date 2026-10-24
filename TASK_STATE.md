@@ -143,7 +143,7 @@ S4 已交付：WebDAV v2 同步（客户端/合并/设置页/测试）、应用�
 - [x] 同步：`SyncManager.copyLinks` 整行搬运关联（含 label），删除 `LinkIds` 悬空过滤；墓碑只删父行，不再连带关联
 - [x] 文案：`purge_confirm_dict` / `purge_confirm_partner` 改为「历史关联按历史真相保留」
 - [x] 测试：新增 `HistoryTruthPurgeTest` 6 项（伴侣 / 类型 / 地点+姿势+玩具 / 编辑回写 / 改名刷新 / 幽灵选项）；`MigrationTest` 增 3→4 回填与去外键用例、1→4 全链路；`DatabaseTest` 硬删伴侣断言由「级联清空」改为「保留 + 标记」
-- 验证：JVM 57 项全绿；模拟器 Pixel_10_Pro（x86_64）`am instrument` **82 项全绿**（含 HistoryTruthPurgeTest 6 / MigrationTest 3）
+- 验证：JVM 57 项全绿；`connectedDebugAndroidTest` 在**真机 24129PN74C（Android 17）**与模拟器 Pixel_10_Pro 上各 **82 项全绿**（0 failure / 0 error，用时 3.7s / 5.1s）
 
 ## 3. 剩余事项（2026-10-24 按代码核对后重写）
 
@@ -240,7 +240,7 @@ git add -A; git commit -m "..."; git push
 | 编译告警 | `hiltViewModel` 提示迁移到 `androidx.hilt.lifecycle.viewmodel.compose`（未处理，不影响构建）；`TabRow` 已换 `PrimaryTabRow` |
 | 数据 | 关联表只对 `record` 级联；伴侣 / 字典行被物理删除后**关联与名字快照保留**（v4 历史真相，`HistoryTruthPurgeTest` 锁定）；软删同样保留 |
 | 迁移 | DB version=4，迁移集中在 `Migrations.kt`（`Migrations.ALL`），schema 已导出 `1.json` ~ `4.json`；再加列必须补 Migration 并导出 schema |
-| 测试 | 2026-10-25 模拟器 Pixel_10_Pro：仪器 82 项全绿；JVM 57 项全绿。真机 `connectedDebugAndroidTest` 本轮卡在 MIUI/UTP 安装阶段（无测试进度），改用 `am instrument` 在模拟器复跑 |
+| 测试 | 2026-10-25 真机 24129PN74C（Android 17）+ 模拟器 Pixel_10_Pro：`connectedDebugAndroidTest` 各 82 项全绿（0 failure）；JVM 57 项全绿 |
 | 测试（真机） | MIUI 每次 ADB 安装弹「USB 安装提示」，10 秒内不点「继续安装」即 `INSTALL_FAILED_USER_RESTRICTED`；跑 `connectedDebugAndroidTest` 需盯手机确认 |
 | 数据 | pm clear 后旧记录仍可能出现（WAL/文件残留），验证前用 **卸载重装** 才是干净状态 |
 | 隐私 | 真实记录、昵称与照片**禁止入库** |
