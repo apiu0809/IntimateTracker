@@ -22,7 +22,7 @@ import androidx.room.RoomDatabase
         RecordToyCrossRef::class,
         RecordLocationCrossRef::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {

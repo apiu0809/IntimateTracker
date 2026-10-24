@@ -29,9 +29,9 @@
     <string name="duplicate_partner_message_deleted">已删除的伴侣「%1$s」仍占用这个名称，是否恢复它？</string>
     <string name="action_purge">彻底删除</string>
     <string name="purge_confirm_dict">彻底删除「%1$s」？
-此操作不可恢复，已有记录里的这个标签也会被移除。</string>
+此操作不可恢复；已有记录里的关联与名字会按「历史真相」保留，并标注「（已删除）」。</string>
     <string name="purge_confirm_partner">彻底删除伴侣「%1$s」？
-此操作不可恢复，历史记录与该伴侣的关联也会被移除。</string>
+此操作不可恢复；历史记录与该伴侣的关联和名字会按「历史真相」保留，并标注「（已删除）」。</string>
     <string name="action_edit">编辑</string>
 
     <!-- 日历 -->

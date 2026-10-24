@@ -23,8 +23,8 @@
 - **记录**：14 字段表单、图标、照片、简化输入（底部面板）、日期选择；只读详情页 + 修改 / 删除
 - **历史**：按月/日分组 + 相册网格；左右滑动切换「活动 / 相册」
 - **统计**：9 页签、左右滑动切换、期间/伴侣筛选、11 张指标卡、排行、月度柱图、星期分布
-- **伴侣**：关系类型（随性关系 / 配偶 / 女朋友 / 情人 / 朋友 / 前任 / 同事 / 陌生人 / 其他）、归档、软删
-- **字典**：类型 / 地点 / 姿势 / 情趣用品；平铺卡片列表 + 行尾手柄拖拽排序；四类都可新增、编辑与删除（姿势带备注 / 强度，其余带备注），不再区分内置与自建；误删的条目在列表底部「已删除」区一键恢复，「彻底删除」后不会被同步或种子重新带回
+- **伴侣**：关系类型（随性关系 / 配偶 / 女朋友 / 情人 / 朋友 / 前任 / 同事 / 陌生人 / 其他）、归档、软删；「彻底删除」只删伴侣本身，历史记录里的关联与名字按「历史真相」保留（标「（已删除）」）
+- **字典**：类型 / 地点 / 姿势 / 情趣用品；平铺卡片列表 + 行尾手柄拖拽排序；四类都可新增、编辑与删除（姿势带备注 / 强度，其余带备注），不再区分内置与自建；误删的条目在列表底部「已删除」区一键恢复，「彻底删除」后不会被同步或种子重新带回，但已有记录的关联与名字快照保留（标「（已删除）」）
 - **同步**：WebDAV `current.zip` + 每日历史（最多 14 份）、逐行 LWW（含照片）、清空后可恢复；支持自动同步（打开 App / 15 分钟–每天定时 / 修改后防抖），可选仅 Wi-Fi、仅充电
 - **安全**：生物识别 / 设备凭据应用锁、`FLAG_SECURE`、后台 5 分钟重新上锁、WebDAV 密码加密存储
 - **外观**：应用图标（黑灰底 + 白色日历与心形）、主题强调色自由调色（HSV 滑块）、深色 / 浅色 / 跟随系统
@@ -38,6 +38,7 @@
 2. **不存卡路里**：不存、不算、不显示
 3. **同步走 WebDAV v2**：OkHttp 自写 + 整库 zip + ETag + 逐行 LWW（照片行参与合并），远端一份 `current.zip` + 每日历史，自动同步由 WorkManager 调度
 4. **只做简体中文**，不做 i18n（v1.6.0 起移除英文资源）
+5. **历史真相**：删除词条（伴侣 / 字典项）不删除历史关联——关联行自带名字快照，彻底删除父行也不 CASCADE，展示时标「（已删除）」
 
 ## 技术栈
 
@@ -57,8 +58,8 @@
 ```powershell
 $env:JAVA_HOME = "E:\Program Files\Android\Android Studio\jbr"   # JDK 21
 .\gradlew.bat assembleDebug
-.\gradlew.bat testDebugUnitTest          # 49 项单测
-.\gradlew.bat connectedDebugAndroidTest  # 75 项仪器测试（需模拟器/真机）
+.\gradlew.bat testDebugUnitTest          # 57 项单测
+.\gradlew.bat connectedDebugAndroidTest  # 82 项仪器测试（需模拟器/真机）
 .\gradlew.bat assembleRelease            # 签名包，见下
 ```
 
@@ -106,7 +107,7 @@ powershell -ExecutionPolicy Bypass -File tools\publish_release.ps1 -Version v1.5
 
 ## 数据
 
-16 张表（Room v3，迁移见 `Migrations.kt`，schema 导出至 `app/schemas/`）：伴侣、类型、姿势、情趣用品、地点、记录、照片、模板、设置、同步元数据、墓碑 + 5 张关联表。照片行含 `updated_at` 并参与逐行同步；全部软删除，记录与关联表外键级联。
+16 张表（Room v4，迁移见 `Migrations.kt`，schema 导出至 `app/schemas/`）：伴侣、类型、姿势、情趣用品、地点、记录、照片、模板、设置、同步元数据、墓碑 + 5 张关联表。照片行含 `updated_at` 并参与逐行同步；业务数据软删除，5 张关联表只对 `record` 级联——关联行带 `label` 名字快照，伴侣 / 字典项被彻底删除后历史关联与名字仍保留（展示标「（已删除）」）。
 
 内置字典：10 个类型、23 个地点；**姿势不内置**。关系类型、性别、主动方、防护、强度均为枚举。
 
@@ -128,7 +129,7 @@ powershell -ExecutionPolicy Bypass -File tools\publish_release.ps1 -Version v1.5
 ## 已知限制
 
 - 仅提供 `arm64-v8a`（调试可用 `-PwithX86` 额外出 x86_64 包）；未开启 R8 混淆
-- 升级迁移只保留正向路径（v1 → v2，见 `Migrations.kt`），不支持降级
+- 升级迁移只保留正向路径（v1 → v4，见 `Migrations.kt`），不支持降级
 - 应用内语言切换未接 `AppCompatDelegate.setApplicationLocales`（跟随系统）
 - 生物识别成功路径无自动化覆盖（instrumentation 不触达 `BiometricPrompt`），需真机手测
 

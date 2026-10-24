@@ -7,7 +7,8 @@
 
 按 `prd-v1.1.md` 实现 Android App「亲密记录 / Intimate Tracker」（Kotlin + Compose + Room + Hilt）。
 4 个 Sprint 均已于 2026-10-22 交付：**S1 骨架+数据层+字典/伴侣 → S2 记录表单+日历+历史 → S3 统计 9 页签 → S4 同步 v2+应用锁+导出**；
-当前版本 **v1.6.0**（versionCode 52，数据库 v3），2026-10-25 已真机复跑 75 项仪器测试 + 57 项 JVM 单测全绿（见 §2.8），并于 2026-10-25 发布（tag `v1.6.0`）。
+当前版本 **v1.6.0**（versionCode 52），2026-10-25 已真机复跑 75 项仪器测试 + 57 项 JVM 单测全绿（见 §2.8），并于 2026-10-25 发布（tag `v1.6.0`）。
+工作区已升级到 **数据库 v4**（§2.9，历史真相强化），尚未发版。
 
 已确认的四项产品决策：
 1. 范围裁剪：不做账号体系与增值模块，仅 WebDAV 文件同步
@@ -24,7 +25,7 @@
 - [x] **S1 全部交付**（commit `c0fcd1e`，已 push）：
   - Gradle 骨架（`gradle/libs.versions.toml`、`gradlew`）、`gradle.properties`（含 `android.disallowKotlinSourceSets=false`、`org.gradle.java.home`）
   - 深色主题 + 5 tab 底部导航（简体）
-  - 16 张表 Entity/DAO/AppDatabase（外键 CASCADE、软删、索引、schema 导出到 `app/schemas/`）
+  - 16 张表 Entity/DAO/AppDatabase（5 张关联表 v4 起只对 record 级联 + label 快照、软删、索引、schema 导出到 `app/schemas/`）
   - 种子数据 10 类型 / 23 地点 / 0 内置姿势（幂等）
   - 字典管理（内置可隐藏、自建可删、姿势带强度）
   - 伴侣列表 / 新增 / 编辑 / 归档 / 软删
@@ -133,7 +134,19 @@ S4 已交付：WebDAV v2 同步（客户端/合并/设置页/测试）、应用�
 - [x] UI 统一（2026-10-25）：四类字典新增 / 编辑弹窗的输入框、下拉选项框改为与「新增伴侣」同一套外框组件（`ui/component/FormControls.kt` 的 `FormTextField` / `FormSelectField`：8dp 圆角、18sp 正文、浮动标签），伴侣页同步改用同一组件；省略旧的下划线输入框 / 强度下划线下拉
 - 验证：`testDebugUnitTest` 57 项全绿；真机 24129PN74C `connectedDebugAndroidTest` 75 项全绿（DictionaryRepositoryTest 18 / FilterPruneTest 9 / RecordRepositoryTest 8）
 
+## 2.9 历史真相强化：彻底删除也不移除关联（2026-10-25，DB v4，未发布）
+
+- [x] 数据层：5 张关联表新增 `label` 名字快照，并**去掉指向 `partner` / 4 张字典表的外键**（只保留 `record` 级联）；`AppDatabase.version = 4`，`Migrations.MIGRATION_3_4` 重建表并用父表当前名字回填，schema 导出 `4.json`
+- [x] 写入口径：`RecordRepository.save` 对每个关联 id 先取父行当前名字（含软删行），父行已被物理删除则沿用该记录原有快照；改名（`PartnerRepository.save` / `DictionaryRepository.update` / `restoreAndUpdate`）同事务刷新所有历史关联的 `label`
+- [x] 展示口径：`RecordDao` 列表 / 日历改 `LEFT JOIN` + `COALESCE(父行名, label)`，父行不存在或软删都标「（已删除）」；详情页改用 5 条 `*LinkNames` 查询；统计用 `*HistoryLabels` 给已彻底删除项补名，排行与分母不缩水
+- [x] 编辑记录：`RecordDao.observeLinkRows`（UNION ALL）+ `AddRecordViewModel.combine`，父行已彻底删除的选中项以「（已删除）」幽灵选项出现，可取消，保存不丢关联
+- [x] 同步：`SyncManager.copyLinks` 整行搬运关联（含 label），删除 `LinkIds` 悬空过滤；墓碑只删父行，不再连带关联
+- [x] 文案：`purge_confirm_dict` / `purge_confirm_partner` 改为「历史关联按历史真相保留」
+- [x] 测试：新增 `HistoryTruthPurgeTest` 6 项（伴侣 / 类型 / 地点+姿势+玩具 / 编辑回写 / 改名刷新 / 幽灵选项）；`MigrationTest` 增 3→4 回填与去外键用例、1→4 全链路；`DatabaseTest` 硬删伴侣断言由「级联清空」改为「保留 + 标记」
+- 验证：JVM 57 项全绿；模拟器 Pixel_10_Pro（x86_64）`am instrument` **82 项全绿**（含 HistoryTruthPurgeTest 6 / MigrationTest 3）
+
 ## 3. 剩余事项（2026-10-24 按代码核对后重写）
+
 > 旧版本节停留在 S1 阶段。核对后确认已落地、可从待办移除的：S2/S3/S4 全部功能、伴侣头像（导入/中心裁切 512px/更换/移除）、
 > 简化输入（已改为记录表单内 `SimplifiedInputSheet`）、偏好设置、应用锁、WebDAV、导出/清空、Room v2 迁移、应用图标。
 >
@@ -197,7 +210,7 @@ $env:JAVA_HOME="E:\Program Files\Android\Android Studio\jbr"
 # JVM 单测（57 项）
 .\gradlew.bat testDebugUnitTest --console=plain
 
-# 仪器测试（75 项：DatabaseTest 7 + PhotoRepositoryTest 3 + RecordRepositoryTest 8 + RhythmSettingsPersistenceTest 3 + SettingsAndTemplateTest 5 + StatsGoldenTest 6 + SyncFlowTest 5 + WebDavClientTest 4 + DictionaryRepositoryTest 18 + DeletedItemsConsistencyTest 5 + FilterPruneTest 9 + MigrationTest 2）
+# 仪器测试（82 项：DatabaseTest 7 + PhotoRepositoryTest 3 + RecordRepositoryTest 8 + RhythmSettingsPersistenceTest 3 + SettingsAndTemplateTest 5 + StatsGoldenTest 6 + SyncFlowTest 5 + WebDavClientTest 4 + DictionaryRepositoryTest 18 + DeletedItemsConsistencyTest 5 + FilterPruneTest 9 + MigrationTest 3 + HistoryTruthPurgeTest 6）
 # 真机：先 adb devices 确认在线；MIUI 会弹「USB 安装提示」，须在 10 秒内点「继续安装」，否则安装阶段失败
 # 模拟器：
 $sdk="$env:LOCALAPPDATA\Android\Sdk"
@@ -225,16 +238,16 @@ git add -A; git commit -m "..."; git push
 | 环境 | `C:\Program Files\Java\jdk-17.0.5` 是空壳（无 bin），必须用 `E:\...\Android Studio\jbr`；`gradle.properties` 已固定 |
 | 环境 | 本机默认沙箱会拦截 git 的 schannel 和 Gradle 写盘；当前会话已是 danger-full-access，新会话若回退需重新申请 |
 | 编译告警 | `hiltViewModel` 提示迁移到 `androidx.hilt.lifecycle.viewmodel.compose`（未处理，不影响构建）；`TabRow` 已换 `PrimaryTabRow` |
-| 数据 | 软删伴侣时**保留**交叉表关联（有意为之，历史记录需要）；硬删才 CASCADE —— 已有测试锁定，勿随意改 |
-| 迁移 | DB version=3，迁移集中在 `Migrations.kt`（`Migrations.ALL`），schema 已导出 `1.json` / `2.json` / `3.json`；再加列必须补 Migration 并导出 schema |
-| 测试 | 仪器测试 2026-10-25 真机 75 项全绿、JVM 57 项全绿（`connectedDebugAndroidTest` / `testDebugUnitTest`）；模拟器 AEHD 可用但需完整权限 |
+| 数据 | 关联表只对 `record` 级联；伴侣 / 字典行被物理删除后**关联与名字快照保留**（v4 历史真相，`HistoryTruthPurgeTest` 锁定）；软删同样保留 |
+| 迁移 | DB version=4，迁移集中在 `Migrations.kt`（`Migrations.ALL`），schema 已导出 `1.json` ~ `4.json`；再加列必须补 Migration 并导出 schema |
+| 测试 | 2026-10-25 模拟器 Pixel_10_Pro：仪器 82 项全绿；JVM 57 项全绿。真机 `connectedDebugAndroidTest` 本轮卡在 MIUI/UTP 安装阶段（无测试进度），改用 `am instrument` 在模拟器复跑 |
 | 测试（真机） | MIUI 每次 ADB 安装弹「USB 安装提示」，10 秒内不点「继续安装」即 `INSTALL_FAILED_USER_RESTRICTED`；跑 `connectedDebugAndroidTest` 需盯手机确认 |
 | 数据 | pm clear 后旧记录仍可能出现（WAL/文件残留），验证前用 **卸载重装** 才是干净状态 |
 | 隐私 | 真实记录、昵称与照片**禁止入库** |
 
 ## 8. 下一步建议
 
-1. **回归口径**：改动后跑 `.\gradlew.bat testDebugUnitTest`（57 项）+ 真机 `connectedDebugAndroidTest`（75 项）；真机注意 MIUI 安装弹框 10 秒内点「继续安装」
-2. **保持文档同步**：功能或数据模型再变时同步 `prd-v1.1.md` / `README.md` / 本文件（三份文档已于 2026-10-24 对齐 v1.5.9）
+1. **回归口径**：改动后跑 `.\gradlew.bat testDebugUnitTest`（57 项）+ 仪器测试（82 项；真机注意 MIUI 安装弹框，模拟器可用 `am instrument`）；数据层改动务必跑 `MigrationTest`
+2. **保持文档同步**：功能或数据模型再变时同步 `prd-v1.1.md` / `README.md` / 本文件（2026-10-25 已按 DB v4 同步一轮）
 3. **发版**：`powershell -ExecutionPolicy Bypass -File tools\publish_release.ps1 -Version vX.Y.Z`，同步更新 `CHANGELOG.md` / `更新日志.md` 并打 `vX.Y.Z` tag
 4. **可选增强**：开 R8 + 体积优化、补 x86_64 包、语言切换接系统 API、生物识别真机验证、清理未引用文案

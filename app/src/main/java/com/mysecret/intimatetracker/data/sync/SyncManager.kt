@@ -3,13 +3,9 @@ package com.mysecret.intimatetracker.data.sync
 import android.content.Context
 import android.os.Build
 import androidx.room.Room
+import androidx.room.withTransaction
 import com.mysecret.intimatetracker.data.db.AppDatabase
 import com.mysecret.intimatetracker.data.db.Migrations
-import com.mysecret.intimatetracker.data.db.RecordLocationCrossRef
-import com.mysecret.intimatetracker.data.db.RecordPartnerCrossRef
-import com.mysecret.intimatetracker.data.db.RecordPositionCrossRef
-import com.mysecret.intimatetracker.data.db.RecordSexTypeCrossRef
-import com.mysecret.intimatetracker.data.db.RecordToyCrossRef
 import com.mysecret.intimatetracker.data.db.TombstoneEntity
 import com.mysecret.intimatetracker.data.db.SettingEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -210,15 +206,9 @@ class SyncManager @Inject constructor(
 
             changed += mergeDictionaries(remote, localTombKeys, remoteTombs)
 
-            // 关联表只保留本地仍存在的 id，避免彻底删除后外键失败
-            val links = LinkIds(
-                partners = db.partnerDao().allForSync().mapTo(HashSet()) { it.id },
-                sexTypes = db.sexTypeDao().all().mapTo(HashSet()) { it.id },
-                positions = db.positionDao().all().mapTo(HashSet()) { it.id },
-                toys = db.toyDao().all().mapTo(HashSet()) { it.id },
-                locations = db.locationDao().all().mapTo(HashSet()) { it.id },
-            )
-            changed += mergeRecords(remote, links)
+            // 关联表整行搬运（含 label 快照）：伴侣 / 字典项即使已被彻底删除，
+            // 记录与它的历史关联也要跟着同步包一起走，不再按「本地是否还有父行」过滤。
+            changed += mergeRecords(remote)
             changed += mergePhotos(remote)
         } finally {
             remote.close()
@@ -226,14 +216,6 @@ class SyncManager @Inject constructor(
         }
         return changed
     }
-
-    private data class LinkIds(
-        val partners: Set<String>,
-        val sexTypes: Set<String>,
-        val positions: Set<String>,
-        val toys: Set<String>,
-        val locations: Set<String>,
-    )
 
     /**
      * 字典合并：逐行 LWW（含软删行，避免「本地软删、远端旧行」把删除覆盖掉）+ 墓碑。
@@ -317,13 +299,16 @@ class SyncManager @Inject constructor(
         return changed
     }
 
-    private suspend fun mergeRecords(remote: AppDatabase, links: LinkIds): Int {
+    private suspend fun mergeRecords(remote: AppDatabase): Int {
         var changed = 0
         remote.recordDao().allForSync().forEach { record ->
             val local = db.recordDao().findIncludingDeleted(record.id)
             if (local == null || record.updatedAt > local.updatedAt) {
-                db.recordDao().upsert(record)
-                copyLinks(remote, record.id, links)
+                // 记录与关联必须一起落库：否则中断后会留下「记录在、关联没搬过来」的中间态
+                db.withTransaction {
+                    db.recordDao().upsert(record)
+                    copyLinks(remote, record.id)
+                }
                 changed++
             }
         }
@@ -346,27 +331,22 @@ class SyncManager @Inject constructor(
         return changed
     }
 
-    private suspend fun copyLinks(remote: AppDatabase, recordId: String, links: LinkIds) {
-        db.recordDao().clearPartners(recordId)
-        db.recordDao().clearSexTypes(recordId)
-        db.recordDao().clearPositions(recordId)
-        db.recordDao().clearToys(recordId)
-        db.recordDao().clearLocations(recordId)
-        remote.recordDao().partnerIds(recordId).filter { it in links.partners }.forEach {
-            db.recordDao().linkPartner(RecordPartnerCrossRef(recordId, it))
-        }
-        remote.recordDao().sexTypeIds(recordId).filter { it in links.sexTypes }.forEach {
-            db.recordDao().linkSexType(RecordSexTypeCrossRef(recordId, it))
-        }
-        remote.recordDao().positionIds(recordId).filter { it in links.positions }.forEach {
-            db.recordDao().linkPosition(RecordPositionCrossRef(recordId, it))
-        }
-        remote.recordDao().toyIds(recordId).filter { it in links.toys }.forEach {
-            db.recordDao().linkToy(RecordToyCrossRef(recordId, it))
-        }
-        remote.recordDao().locationIds(recordId).filter { it in links.locations }.forEach {
-            db.recordDao().linkLocation(RecordLocationCrossRef(recordId, it))
-        }
+    /**
+     * 整行搬运关联（含 label 快照），不按父行是否存在过滤：
+     * 父行已在另一端被彻底删除时，历史关联与名字仍然要落库。
+     */
+    private suspend fun copyLinks(remote: AppDatabase, recordId: String) {
+        val dao = db.recordDao()
+        dao.clearPartners(recordId)
+        dao.clearSexTypes(recordId)
+        dao.clearPositions(recordId)
+        dao.clearToys(recordId)
+        dao.clearLocations(recordId)
+        remote.recordDao().partnerLinkRows(recordId).forEach { dao.linkPartner(it.copy(recordId = recordId)) }
+        remote.recordDao().sexTypeLinkRows(recordId).forEach { dao.linkSexType(it.copy(recordId = recordId)) }
+        remote.recordDao().positionLinkRows(recordId).forEach { dao.linkPosition(it.copy(recordId = recordId)) }
+        remote.recordDao().toyLinkRows(recordId).forEach { dao.linkToy(it.copy(recordId = recordId)) }
+        remote.recordDao().locationLinkRows(recordId).forEach { dao.linkLocation(it.copy(recordId = recordId)) }
     }
 
     private suspend fun push(client: WebDavClient, localVersion: Long): RemoteEntry {

@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import com.mysecret.intimatetracker.data.db.AppDatabase
 import com.mysecret.intimatetracker.data.db.CalendarEntry
 import com.mysecret.intimatetracker.data.db.RecordEntity
+import com.mysecret.intimatetracker.data.db.RecordLinkRow
 import com.mysecret.intimatetracker.data.db.RecordListRow
 import com.mysecret.intimatetracker.data.db.RecordLocationCrossRef
 import com.mysecret.intimatetracker.data.db.RecordPartnerCrossRef
@@ -63,6 +64,10 @@ class RecordRepository @Inject constructor(
     fun observeCalendar(from: Long, to: Long): Flow<List<CalendarEntry>> =
         db.recordDao().observeCalendar(from, to)
 
+    /** 编辑记录时观察关联快照，用于补齐「父行已彻底删除」的历史选项。 */
+    fun observeLinks(recordId: String): Flow<List<RecordLinkRow>> =
+        db.recordDao().observeLinkRows(recordId)
+
     suspend fun find(id: String): RecordEntity? = db.recordDao().find(id)
 
     suspend fun save(draft: RecordDraft): String {
@@ -72,13 +77,44 @@ class RecordRepository @Inject constructor(
             val existing = draft.id?.takeIf { it.isNotBlank() }?.let { dao.find(it) }
             val id = existing?.id ?: UUID.randomUUID().toString()
 
-            // 表单可能开着的时候，别处（彻底删除 / 后台同步拉到的墓碑）把某项物理删掉了：
-            // 这里按「本地仍存在的行」过滤，否则写交叉表会撞外键，整个保存事务失败。
-            val partnerIds = draft.partnerIds.filter { db.partnerDao().findIncludingDeleted(it) != null }
-            val sexTypeIds = draft.sexTypeIds.filter { db.sexTypeDao().byIdIncludingDeleted(it) != null }
-            val positionIds = draft.positionIds.filter { db.positionDao().byIdIncludingDeleted(it) != null }
-            val toyIds = draft.toyIds.filter { db.toyDao().byIdIncludingDeleted(it) != null }
-            val locationIds = draft.locationIds.filter { db.locationDao().byIdIncludingDeleted(it) != null }
+            // 关联是「发生过的事实」：父行（伴侣 / 字典项）被彻底删除后，关联行与名字快照
+            // 都必须保留。父行还在就写当前名字（改名后重新保存会刷新快照），
+            // 不在就用这条记录原来的快照；只有「既没有父行、也没有快照」的脏 id 才丢弃。
+            suspend fun resolved(
+                ids: List<String>,
+                currentName: suspend (String) -> String?,
+                oldLabels: Map<String, String?>,
+            ): List<Pair<String, String>> = ids.distinct().mapNotNull { linkId ->
+                (currentName(linkId) ?: oldLabels[linkId])
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { linkId to it }
+            }
+
+            val partnerIds = resolved(
+                draft.partnerIds,
+                { db.partnerDao().findIncludingDeleted(it)?.name },
+                existing?.let { dao.partnerLinkRows(id).associate { link -> link.partnerId to link.label } } ?: emptyMap(),
+            )
+            val sexTypeIds = resolved(
+                draft.sexTypeIds,
+                { db.sexTypeDao().byIdIncludingDeleted(it)?.name },
+                existing?.let { dao.sexTypeLinkRows(id).associate { link -> link.sexTypeId to link.label } } ?: emptyMap(),
+            )
+            val positionIds = resolved(
+                draft.positionIds,
+                { db.positionDao().byIdIncludingDeleted(it)?.name },
+                existing?.let { dao.positionLinkRows(id).associate { link -> link.positionId to link.label } } ?: emptyMap(),
+            )
+            val toyIds = resolved(
+                draft.toyIds,
+                { db.toyDao().byIdIncludingDeleted(it)?.name },
+                existing?.let { dao.toyLinkRows(id).associate { link -> link.toyId to link.label } } ?: emptyMap(),
+            )
+            val locationIds = resolved(
+                draft.locationIds,
+                { db.locationDao().byIdIncludingDeleted(it)?.name },
+                existing?.let { dao.locationLinkRows(id).associate { link -> link.locationId to link.label } } ?: emptyMap(),
+            )
 
             dao.upsert(
                 RecordEntity(
@@ -102,11 +138,21 @@ class RecordRepository @Inject constructor(
             dao.clearPositions(id)
             dao.clearToys(id)
             dao.clearLocations(id)
-            partnerIds.forEach { dao.linkPartner(RecordPartnerCrossRef(recordId = id, partnerId = it)) }
-            sexTypeIds.forEach { dao.linkSexType(RecordSexTypeCrossRef(recordId = id, sexTypeId = it)) }
-            positionIds.forEach { dao.linkPosition(RecordPositionCrossRef(recordId = id, positionId = it)) }
-            toyIds.forEach { dao.linkToy(RecordToyCrossRef(recordId = id, toyId = it)) }
-            locationIds.forEach { dao.linkLocation(RecordLocationCrossRef(recordId = id, locationId = it)) }
+            partnerIds.forEach { (partnerId, label) ->
+                dao.linkPartner(RecordPartnerCrossRef(recordId = id, partnerId = partnerId, label = label))
+            }
+            sexTypeIds.forEach { (sexTypeId, label) ->
+                dao.linkSexType(RecordSexTypeCrossRef(recordId = id, sexTypeId = sexTypeId, label = label))
+            }
+            positionIds.forEach { (positionId, label) ->
+                dao.linkPosition(RecordPositionCrossRef(recordId = id, positionId = positionId, label = label))
+            }
+            toyIds.forEach { (toyId, label) ->
+                dao.linkToy(RecordToyCrossRef(recordId = id, toyId = toyId, label = label))
+            }
+            locationIds.forEach { (locationId, label) ->
+                dao.linkLocation(RecordLocationCrossRef(recordId = id, locationId = locationId, label = label))
+            }
             id
         }
         syncScheduler.onLocalChange()

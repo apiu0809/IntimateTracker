@@ -1,9 +1,11 @@
 package com.mysecret.intimatetracker
 
 import android.content.Context
+import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.mysecret.intimatetracker.data.db.AppDatabase
 import com.mysecret.intimatetracker.data.db.PartnerEntity
 import com.mysecret.intimatetracker.data.db.RecordEntity
@@ -17,6 +19,7 @@ import com.mysecret.intimatetracker.domain.model.Gender
 import com.mysecret.intimatetracker.domain.model.RelationshipType
 import com.mysecret.intimatetracker.ui.calendar.CalendarViewModel
 import com.mysecret.intimatetracker.ui.history.HistoryViewModel
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -40,6 +43,14 @@ class FilterPruneTest {
     private lateinit var settingsRepository: SettingsRepository
     private lateinit var photoRepository: PhotoRepository
 
+    /** 测试里手动 new 的 ViewModel 不会自动 clear，必须收尾取消，否则会与 db.close() 抢连接。 */
+    private val viewModels = mutableListOf<androidx.lifecycle.ViewModel>()
+
+    private fun <T : androidx.lifecycle.ViewModel> track(vm: T): T {
+        viewModels += vm
+        return vm
+    }
+
     @Before
     fun setUp() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -58,12 +69,16 @@ class FilterPruneTest {
 
     @After
     fun tearDown() {
+        // 先停掉 ViewModel 的协程并等主线程空闲，再关库；否则 FilterPruneTest 偶发
+        // 「Process crashed: SQLiteConnectionPool.close()」。
+        viewModels.forEach { it.viewModelScope.cancel() }
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
         db.close()
     }
 
     @Test
     fun calendar_filter_drops_deleted_partner() {
-        val vm = CalendarViewModel(recordRepository, settingsRepository, partnerRepository)
+        val vm = track(CalendarViewModel(recordRepository, settingsRepository, partnerRepository))
         vm.togglePartner("p1")
         assertEquals(setOf("p1"), vm.filter.partnerIds)
 
@@ -75,7 +90,7 @@ class FilterPruneTest {
 
     @Test
     fun history_filter_drops_archived_partner() {
-        val vm = HistoryViewModel(recordRepository, photoRepository, partnerRepository)
+        val vm = track(HistoryViewModel(recordRepository, photoRepository, partnerRepository))
         vm.togglePartner("p1")
         assertEquals(setOf("p1"), vm.filter.partnerIds)
 

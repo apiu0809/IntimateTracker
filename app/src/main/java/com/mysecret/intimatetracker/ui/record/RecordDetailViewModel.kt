@@ -44,20 +44,16 @@ class RecordDetailViewModel @Inject constructor(
     fun load() {
         viewModelScope.launch {
             val record = db.recordDao().find(recordId) ?: return@launch
-            // 详情同样按「历史真相」：已删的字典项与伴侣照常展示，名字后加「（已删除）」
-            val typeNames = db.sexTypeDao().all().associate { it.id to it.name.withDeletedMarker(it.deletedAt != null) }
-            val partnerNames = db.partnerDao().allForSync().associate { it.id to it.name.withDeletedMarker(it.deletedAt != null) }
-            val locationNames = db.locationDao().all().associate { it.id to it.name.withDeletedMarker(it.deletedAt != null) }
-            val positionNames = db.positionDao().all().associate { it.id to it.name.withDeletedMarker(it.deletedAt != null) }
-            val toyNames = db.toyDao().all().associate { it.id to it.name.withDeletedMarker(it.deletedAt != null) }
-
+            // 详情按「历史真相」：父行还在就用当前名字，父行被彻底删除就用关联快照，
+            // 两种情况只要父行不可用就标「（已删除）」，关联本身永远不会消失。
+            val dao = db.recordDao()
             detail = RecordDetail(
                 record = record,
-                types = db.recordDao().sexTypeIds(recordId).mapNotNull { typeNames[it] },
-                partners = db.recordDao().partnerIds(recordId).mapNotNull { partnerNames[it] },
-                locations = db.recordDao().locationIds(recordId).mapNotNull { locationNames[it] },
-                positions = db.recordDao().positionIds(recordId).mapNotNull { positionNames[it] },
-                toys = db.recordDao().toyIds(recordId).mapNotNull { toyNames[it] },
+                types = dao.sexTypeLinkNames(recordId).mapNotNull { it.name?.withDeletedMarker(it.deleted) },
+                partners = dao.partnerLinkNames(recordId).mapNotNull { it.name?.withDeletedMarker(it.deleted) },
+                locations = dao.locationLinkNames(recordId).mapNotNull { it.name?.withDeletedMarker(it.deleted) },
+                positions = dao.positionLinkNames(recordId).mapNotNull { it.name?.withDeletedMarker(it.deleted) },
+                toys = dao.toyLinkNames(recordId).mapNotNull { it.name?.withDeletedMarker(it.deleted) },
                 photos = db.photoDao().byRecord(recordId),
             )
         }

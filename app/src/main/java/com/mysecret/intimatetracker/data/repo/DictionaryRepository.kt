@@ -173,7 +173,10 @@ class DictionaryRepository @Inject constructor(
         note: String? = null,
         intensity: Intensity = Intensity.VERY_LOW,
     ) {
-        val changed = updateInternal(kind, id, name, note, intensity, System.currentTimeMillis())
+        // 字典行与历史关联的 label 快照必须一起改，避免只改一半
+        val changed = db.withTransaction {
+            updateInternal(kind, id, name, note, intensity, System.currentTimeMillis())
+        }
         if (changed) syncScheduler.onLocalChange()
     }
 
@@ -192,6 +195,7 @@ class DictionaryRepository @Inject constructor(
         val written: Boolean? = when (kind) {
             DictionaryKind.SEX_TYPE -> db.sexTypeDao().byId(id)?.let {
                 db.sexTypeDao().upsert(it.copy(name = trimmed, notes = notes, updatedAt = now))
+                db.recordDao().relabelSexType(id, trimmed)
                 true
             }
 
@@ -199,16 +203,19 @@ class DictionaryRepository @Inject constructor(
                 db.positionDao().upsert(
                     it.copy(name = trimmed, notes = notes, intensity = intensity, updatedAt = now),
                 )
+                db.recordDao().relabelPosition(id, trimmed)
                 true
             }
 
             DictionaryKind.TOY -> db.toyDao().byId(id)?.let {
                 db.toyDao().upsert(it.copy(name = trimmed, notes = notes, updatedAt = now))
+                db.recordDao().relabelToy(id, trimmed)
                 true
             }
 
             DictionaryKind.LOCATION -> db.locationDao().byId(id)?.let {
                 db.locationDao().upsert(it.copy(name = trimmed, notes = notes, updatedAt = now))
+                db.recordDao().relabelLocation(id, trimmed)
                 true
             }
         }
@@ -226,7 +233,12 @@ class DictionaryRepository @Inject constructor(
         syncScheduler.onLocalChange()
     }
 
-    /** 彻底删除：物理删行 + 写墓碑，避免被远端旧备份带回来。 */
+    /**
+     * 彻底删除：物理删行 + 写墓碑，避免被远端旧备份带回来。
+     *
+     * 只删字典项自己（名称 / 备注 / 强度）；记录与它的关联行仍在，并带着 label 快照，
+     * 历史记录、统计、编辑表单照常显示（标「（已删除）」）。这是有意的「历史真相」口径。
+     */
     suspend fun purge(kind: DictionaryKind, id: String) {
         val now = System.currentTimeMillis()
         db.withTransaction {

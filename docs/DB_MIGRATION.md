@@ -4,11 +4,13 @@
 
 ## 现状
 
-- `AppDatabase` 当前 `version = 2`
+- `AppDatabase` 当前 `version = 4`
 - 16 张表，schema JSON 已导出到 `app/schemas/`
 - `DatabaseModule.provideDatabase` 已配置 `.addMigrations(*Migrations.ALL)`
 - 已完成迁移：
   - **v1 → v2**：`photo` 表新增 `updated_at INTEGER NOT NULL DEFAULT 0`，用 `COALESCE(deleted_at, created_at)` 回填；照片行参与 WebDAV 逐行同步
+  - **v2 → v3**：`sex_type` / `location` 新增 `notes TEXT`（字典管理页的「备注」）
+  - **v3 → v4**：5 张关联表新增 `label TEXT`（名字快照），并去掉指向 `partner` / 4 张字典表的外键（只保留 `record` 级联）；用父表 `name` 回填 `label`。动机见 PRD §3.3「历史真相」：彻底删除词条不能 CASCADE 掉历史关联
 - 迁移已在真机（v1 数据）与模拟器上实际升级验证
 
 ## 设计原则
@@ -21,20 +23,20 @@
 ## 落地步骤（下次改 schema 时照做）
 
 1. 改 Entity
-2. `AppDatabase.version = 2`（递增）
+2. `AppDatabase.version = 4`（按当前版本递增）
 3. 在 `Migrations.kt` 增加：
 
 ```kotlin
-val MIGRATION_1_2 = object : Migration(1, 2) {
+val MIGRATION_4_5 = object : Migration(4, 5) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE record ADD COLUMN mood TEXT")   // 示例：加可空列
     }
 }
-val ALL = arrayOf(MIGRATION_1_2)
+val ALL = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 ```
 
 4. `DatabaseModule` 增加 `.addMigrations(*Migrations.ALL)`
-5. 构建生成 `app/schemas/.../2.json`，提交入库
+5. 构建生成 `app/schemas/.../5.json`，提交入库
 6. 加测试：
 
 ```kotlin

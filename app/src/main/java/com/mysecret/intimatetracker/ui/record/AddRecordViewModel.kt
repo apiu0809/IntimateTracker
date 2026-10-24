@@ -7,7 +7,10 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mysecret.intimatetracker.data.db.PartnerEntity
 import com.mysecret.intimatetracker.data.db.PhotoEntity
+import com.mysecret.intimatetracker.data.db.RecordLinkRow
+import com.mysecret.intimatetracker.data.repo.DictionaryItem
 import com.mysecret.intimatetracker.data.repo.DictionaryKind
 import com.mysecret.intimatetracker.data.repo.FormField
 import com.mysecret.intimatetracker.data.repo.DictionaryRepository
@@ -23,12 +26,20 @@ import com.mysecret.intimatetracker.domain.model.Protection
 import dagger.hilt.android.lifecycle.HiltViewModel
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 private const val MAX_PHOTOS = 3
+
+/** 幽灵选项（父行已彻底删除）用这个 deletedAt 触发「（已删除）」标记，不会被当成可选项。 */
+private const val GHOST_DELETED_AT = 0L
+
+private const val KIND_PARTNER = "partner"
 
 data class RecordForm(
     val timestamp: Long = System.currentTimeMillis(),
@@ -51,7 +62,7 @@ data class RecordForm(
 class AddRecordViewModel @Inject constructor(
     private val records: RecordRepository,
     private val partnerRepository: PartnerRepository,
-    dictionaryRepository: DictionaryRepository,
+    private val dictionaryRepository: DictionaryRepository,
     private val photos: PhotoRepository,
     private val settingsRepository: SettingsRepository,
     savedStateHandle: SavedStateHandle,
@@ -113,25 +124,53 @@ class AddRecordViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 本记录已有的关联（含父行已经被彻底删除的历史 id）。
+     *
+     * 父行物理删除后，[PartnerRepository.observeAllHistory] / 字典列表里都不会再有它，
+     * 但这条记录仍然「选中」着它——用关联快照补一个幽灵选项，保证选中状态可见、可取消，
+     * 保存时也不会把关联丢掉。
+     */
+    private val links: Flow<List<RecordLinkRow>> =
+        recordId?.let { records.observeLinks(it) } ?: flowOf(emptyList())
+
     // 编辑记录时按历史展示：含已删与已归档，界面只显示「当前可用 + 已被本记录选中」的项
-    val partners = partnerRepository.observeAllHistory()
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            partnerRepository.cachedActive(),
-        )
+    val partners = combine(partnerRepository.observeAllHistory(), links) { all, rows ->
+        val known = all.mapTo(HashSet()) { it.id }
+        all + rows.asSequence()
+            .filter { it.kind == KIND_PARTNER && it.linkId !in known && !it.label.isNullOrBlank() }
+            .map {
+                PartnerEntity(
+                    id = it.linkId,
+                    name = it.label.orEmpty(),
+                    deletedAt = GHOST_DELETED_AT,
+                    createdAt = 0L,
+                    updatedAt = 0L,
+                )
+            }
+            .toList()
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        partnerRepository.cachedActive(),
+    )
 
-    val sexTypes = dictionaryRepository.observeIncludingDeleted(DictionaryKind.SEX_TYPE)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val sexTypes = dictionaryOptions(DictionaryKind.SEX_TYPE)
 
-    val positions = dictionaryRepository.observeIncludingDeleted(DictionaryKind.POSITION)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val positions = dictionaryOptions(DictionaryKind.POSITION)
 
-    val toys = dictionaryRepository.observeIncludingDeleted(DictionaryKind.TOY)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val toys = dictionaryOptions(DictionaryKind.TOY)
 
-    val locations = dictionaryRepository.observeIncludingDeleted(DictionaryKind.LOCATION)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val locations = dictionaryOptions(DictionaryKind.LOCATION)
+
+    private fun dictionaryOptions(kind: DictionaryKind) =
+        combine(dictionaryRepository.observeIncludingDeleted(kind), links) { all, rows ->
+            val known = all.mapTo(HashSet()) { it.id }
+            all + rows.asSequence()
+                .filter { it.kind == kind.table && it.linkId !in known && !it.label.isNullOrBlank() }
+                .map { DictionaryItem(id = it.linkId, name = it.label.orEmpty(), deleted = true) }
+                .toList()
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** 返回是否全部接收；超出的部分被丢弃，调用方据此提示。 */
     fun addUris(uris: List<Uri>): Boolean {

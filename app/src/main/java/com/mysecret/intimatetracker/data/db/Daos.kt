@@ -310,13 +310,13 @@ interface RecordDao {
     @Query(
         """
         SELECT r.*,
-          (SELECT GROUP_CONCAT(CASE WHEN s.deleted_at IS NULL THEN s.name ELSE s.name || '（已删除）' END, '|') FROM record_sex_type_cross_ref x JOIN sex_type s ON s.id = x.sex_type_id WHERE x.record_id = r.id) AS typeNames,
-          (SELECT GROUP_CONCAT(s.emoji, '|') FROM record_sex_type_cross_ref x JOIN sex_type s ON s.id = x.sex_type_id WHERE x.record_id = r.id) AS typeEmojis,
-          (SELECT GROUP_CONCAT(CASE WHEN l.deleted_at IS NULL THEN l.name ELSE l.name || '（已删除）' END, '|') FROM record_location_cross_ref x JOIN location l ON l.id = x.location_id WHERE x.record_id = r.id) AS locationNames,
-          (SELECT GROUP_CONCAT(CASE WHEN p.deleted_at IS NULL THEN p.name ELSE p.name || '（已删除）' END, '|') FROM record_position_cross_ref x JOIN position p ON p.id = x.position_id WHERE x.record_id = r.id) AS positionNames,
+          (SELECT GROUP_CONCAT(CASE WHEN s.id IS NULL OR s.deleted_at IS NOT NULL THEN COALESCE(s.name, x.label) || '（已删除）' ELSE s.name END, '|') FROM record_sex_type_cross_ref x LEFT JOIN sex_type s ON s.id = x.sex_type_id WHERE x.record_id = r.id) AS typeNames,
+          (SELECT GROUP_CONCAT(s.emoji, '|') FROM record_sex_type_cross_ref x LEFT JOIN sex_type s ON s.id = x.sex_type_id WHERE x.record_id = r.id) AS typeEmojis,
+          (SELECT GROUP_CONCAT(CASE WHEN l.id IS NULL OR l.deleted_at IS NOT NULL THEN COALESCE(l.name, x.label) || '（已删除）' ELSE l.name END, '|') FROM record_location_cross_ref x LEFT JOIN location l ON l.id = x.location_id WHERE x.record_id = r.id) AS locationNames,
+          (SELECT GROUP_CONCAT(CASE WHEN p.id IS NULL OR p.deleted_at IS NOT NULL THEN COALESCE(p.name, x.label) || '（已删除）' ELSE p.name END, '|') FROM record_position_cross_ref x LEFT JOIN position p ON p.id = x.position_id WHERE x.record_id = r.id) AS positionNames,
           (SELECT COUNT(*) FROM record_toy_cross_ref t WHERE t.record_id = r.id) AS toyCount,
-          (SELECT GROUP_CONCAT(CASE WHEN p.deleted_at IS NULL THEN p.name ELSE p.name || '（已删除）' END, '|') FROM record_partner_cross_ref x JOIN partner p ON p.id = x.partner_id WHERE x.record_id = r.id) AS partnerNames,
-          (SELECT p.avatar_path FROM record_partner_cross_ref x JOIN partner p ON p.id = x.partner_id WHERE x.record_id = r.id ORDER BY p.sort_order LIMIT 1) AS partnerAvatarPath,
+          (SELECT GROUP_CONCAT(CASE WHEN p.id IS NULL OR p.deleted_at IS NOT NULL THEN COALESCE(p.name, x.label) || '（已删除）' ELSE p.name END, '|') FROM record_partner_cross_ref x LEFT JOIN partner p ON p.id = x.partner_id WHERE x.record_id = r.id) AS partnerNames,
+          (SELECT p.avatar_path FROM record_partner_cross_ref x LEFT JOIN partner p ON p.id = x.partner_id WHERE x.record_id = r.id ORDER BY p.sort_order LIMIT 1) AS partnerAvatarPath,
           (SELECT GROUP_CONCAT(p.partner_id, '|') FROM record_partner_cross_ref p WHERE p.record_id = r.id) AS partnerIds
         FROM record r
         WHERE r.deleted_at IS NULL AND r.timestamp BETWEEN :from AND :to
@@ -329,10 +329,10 @@ interface RecordDao {
         """
         SELECT r.id AS recordId, r.timestamp AS timestamp, r.icon AS icon,
           r.satisfaction AS satisfaction, r.protection_used AS protection,
-          (SELECT GROUP_CONCAT(CASE WHEN s.deleted_at IS NULL THEN s.name ELSE s.name || '（已删除）' END, '|') FROM record_sex_type_cross_ref x JOIN sex_type s ON s.id = x.sex_type_id WHERE x.record_id = r.id) AS typeNames,
+          (SELECT GROUP_CONCAT(CASE WHEN s.id IS NULL OR s.deleted_at IS NOT NULL THEN COALESCE(s.name, x.label) || '（已删除）' ELSE s.name END, '|') FROM record_sex_type_cross_ref x LEFT JOIN sex_type s ON s.id = x.sex_type_id WHERE x.record_id = r.id) AS typeNames,
           (SELECT COUNT(*) FROM record_toy_cross_ref t WHERE t.record_id = r.id) AS toyCount,
-          (SELECT GROUP_CONCAT(CASE WHEN p.deleted_at IS NULL THEN p.name ELSE p.name || '（已删除）' END, '|') FROM record_partner_cross_ref x JOIN partner p ON p.id = x.partner_id WHERE x.record_id = r.id) AS partnerNames,
-          (SELECT p.avatar_path FROM record_partner_cross_ref x JOIN partner p ON p.id = x.partner_id WHERE x.record_id = r.id ORDER BY p.sort_order LIMIT 1) AS partnerAvatarPath,
+          (SELECT GROUP_CONCAT(CASE WHEN p.id IS NULL OR p.deleted_at IS NOT NULL THEN COALESCE(p.name, x.label) || '（已删除）' ELSE p.name END, '|') FROM record_partner_cross_ref x LEFT JOIN partner p ON p.id = x.partner_id WHERE x.record_id = r.id) AS partnerNames,
+          (SELECT p.avatar_path FROM record_partner_cross_ref x LEFT JOIN partner p ON p.id = x.partner_id WHERE x.record_id = r.id ORDER BY p.sort_order LIMIT 1) AS partnerAvatarPath,
           (SELECT GROUP_CONCAT(p.partner_id, '|') FROM record_partner_cross_ref p WHERE p.record_id = r.id) AS partnerIds
         FROM record r
         WHERE r.deleted_at IS NULL AND r.timestamp BETWEEN :from AND :to
@@ -359,6 +359,101 @@ interface RecordDao {
     @Query("SELECT location_id FROM record_location_cross_ref WHERE record_id = :recordId")
     suspend fun locationIds(recordId: String): List<String>
 
+    // ---- 关联快照（历史真相）-------------------------------------------------
+    // 关联行自带 label：伴侣 / 字典项被「彻底删除」（物理删行）后，关联与名字都留下。
+    // 展示名 = 父行当前名字（优先，改名即时生效）+ 父行缺失时的快照名，并标「（已删除）」。
+
+    @Query("SELECT * FROM record_partner_cross_ref WHERE record_id = :recordId")
+    suspend fun partnerLinkRows(recordId: String): List<RecordPartnerCrossRef>
+
+    @Query("SELECT * FROM record_sex_type_cross_ref WHERE record_id = :recordId")
+    suspend fun sexTypeLinkRows(recordId: String): List<RecordSexTypeCrossRef>
+
+    @Query("SELECT * FROM record_position_cross_ref WHERE record_id = :recordId")
+    suspend fun positionLinkRows(recordId: String): List<RecordPositionCrossRef>
+
+    @Query("SELECT * FROM record_toy_cross_ref WHERE record_id = :recordId")
+    suspend fun toyLinkRows(recordId: String): List<RecordToyCrossRef>
+
+    @Query("SELECT * FROM record_location_cross_ref WHERE record_id = :recordId")
+    suspend fun locationLinkRows(recordId: String): List<RecordLocationCrossRef>
+
+    @Query(
+        "SELECT COALESCE(d.name, x.label) AS name, (d.id IS NULL OR d.deleted_at IS NOT NULL) AS deleted " +
+            "FROM record_partner_cross_ref x LEFT JOIN partner d ON d.id = x.partner_id " +
+            "WHERE x.record_id = :recordId ORDER BY x.rowid",
+    )
+    suspend fun partnerLinkNames(recordId: String): List<LinkName>
+
+    @Query(
+        "SELECT COALESCE(d.name, x.label) AS name, (d.id IS NULL OR d.deleted_at IS NOT NULL) AS deleted " +
+            "FROM record_sex_type_cross_ref x LEFT JOIN sex_type d ON d.id = x.sex_type_id " +
+            "WHERE x.record_id = :recordId ORDER BY x.rowid",
+    )
+    suspend fun sexTypeLinkNames(recordId: String): List<LinkName>
+
+    @Query(
+        "SELECT COALESCE(d.name, x.label) AS name, (d.id IS NULL OR d.deleted_at IS NOT NULL) AS deleted " +
+            "FROM record_position_cross_ref x LEFT JOIN position d ON d.id = x.position_id " +
+            "WHERE x.record_id = :recordId ORDER BY x.rowid",
+    )
+    suspend fun positionLinkNames(recordId: String): List<LinkName>
+
+    @Query(
+        "SELECT COALESCE(d.name, x.label) AS name, (d.id IS NULL OR d.deleted_at IS NOT NULL) AS deleted " +
+            "FROM record_toy_cross_ref x LEFT JOIN toy d ON d.id = x.toy_id " +
+            "WHERE x.record_id = :recordId ORDER BY x.rowid",
+    )
+    suspend fun toyLinkNames(recordId: String): List<LinkName>
+
+    @Query(
+        "SELECT COALESCE(d.name, x.label) AS name, (d.id IS NULL OR d.deleted_at IS NOT NULL) AS deleted " +
+            "FROM record_location_cross_ref x LEFT JOIN location d ON d.id = x.location_id " +
+            "WHERE x.record_id = :recordId ORDER BY x.rowid",
+    )
+    suspend fun locationLinkNames(recordId: String): List<LinkName>
+
+    /** 编辑记录时用来补齐「已被本记录选中、但父行已经彻底删除」的幽灵选项。 */
+    @Query(
+        """
+        SELECT 'partner' AS kind, x.partner_id AS linkId, x.label AS label FROM record_partner_cross_ref x WHERE x.record_id = :recordId
+        UNION ALL SELECT 'sex_type', x.sex_type_id, x.label FROM record_sex_type_cross_ref x WHERE x.record_id = :recordId
+        UNION ALL SELECT 'position', x.position_id, x.label FROM record_position_cross_ref x WHERE x.record_id = :recordId
+        UNION ALL SELECT 'toy', x.toy_id, x.label FROM record_toy_cross_ref x WHERE x.record_id = :recordId
+        UNION ALL SELECT 'location', x.location_id, x.label FROM record_location_cross_ref x WHERE x.record_id = :recordId
+        """,
+    )
+    fun observeLinkRows(recordId: String): Flow<List<RecordLinkRow>>
+
+    /** 改名时把历史关联的快照一起刷新，保证快照永远等于「最后一次已知名字」。 */
+    @Query("UPDATE record_partner_cross_ref SET label = :name WHERE partner_id = :id")
+    suspend fun relabelPartner(id: String, name: String)
+
+    @Query("UPDATE record_sex_type_cross_ref SET label = :name WHERE sex_type_id = :id")
+    suspend fun relabelSexType(id: String, name: String)
+
+    @Query("UPDATE record_position_cross_ref SET label = :name WHERE position_id = :id")
+    suspend fun relabelPosition(id: String, name: String)
+
+    @Query("UPDATE record_toy_cross_ref SET label = :name WHERE toy_id = :id")
+    suspend fun relabelToy(id: String, name: String)
+
+    @Query("UPDATE record_location_cross_ref SET label = :name WHERE location_id = :id")
+    suspend fun relabelLocation(id: String, name: String)
+
+    // 统计用：父行已经彻底删除时，用关联快照补出历史名字（每个 id 一条）。
+    @Query("SELECT x.sex_type_id AS id, MAX(x.label) AS label FROM record_sex_type_cross_ref x GROUP BY x.sex_type_id")
+    suspend fun sexTypeHistoryLabels(): List<IdLabel>
+
+    @Query("SELECT x.position_id AS id, MAX(x.label) AS label FROM record_position_cross_ref x GROUP BY x.position_id")
+    suspend fun positionHistoryLabels(): List<IdLabel>
+
+    @Query("SELECT x.toy_id AS id, MAX(x.label) AS label FROM record_toy_cross_ref x GROUP BY x.toy_id")
+    suspend fun toyHistoryLabels(): List<IdLabel>
+
+    @Query("SELECT x.location_id AS id, MAX(x.label) AS label FROM record_location_cross_ref x GROUP BY x.location_id")
+    suspend fun locationHistoryLabels(): List<IdLabel>
+
     @Query("DELETE FROM record_sex_type_cross_ref WHERE record_id = :recordId")
     suspend fun clearSexTypes(recordId: String)
 
@@ -371,6 +466,15 @@ interface RecordDao {
     @Query("DELETE FROM record_location_cross_ref WHERE record_id = :recordId")
     suspend fun clearLocations(recordId: String)
 }
+
+/** 关联的展示信息：名字（父行缺失时回退到快照）+ 是否需要「（已删除）」标记。 */
+data class LinkName(val name: String?, val deleted: Boolean)
+
+/** 一条记录的全部关联（编辑表单用）：`kind` 取 partner / sex_type / position / toy / location。 */
+data class RecordLinkRow(val kind: String, val linkId: String, val label: String?)
+
+/** 统计补名用：字典 id → 关联快照里的名字。 */
+data class IdLabel(val id: String, val label: String?)
 
 data class RecordListRow(
     @androidx.room.Embedded val record: RecordEntity,

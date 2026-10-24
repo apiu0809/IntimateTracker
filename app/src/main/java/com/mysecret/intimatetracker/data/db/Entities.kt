@@ -120,7 +120,6 @@ data class RecordEntity(
     primaryKeys = ["record_id", "partner_id"],
     foreignKeys = [
         ForeignKey(entity = RecordEntity::class, parentColumns = ["id"], childColumns = ["record_id"], onDelete = ForeignKey.CASCADE),
-        ForeignKey(entity = PartnerEntity::class, parentColumns = ["id"], childColumns = ["partner_id"], onDelete = ForeignKey.CASCADE),
     ],
     indices = [Index("record_id"), Index("partner_id")],
 )
@@ -128,6 +127,13 @@ data class RecordPartnerCrossRef(
     @ColumnInfo(name = "record_id") val recordId: String,
     @ColumnInfo(name = "partner_id") val partnerId: String,
     @ColumnInfo(name = "partner_orgasm_count") val partnerOrgasmCount: Int? = null,
+    /**
+     * 关联当时的伴侣名字快照（历史真相）。
+     *
+     * 伴侣「彻底删除」后行会物理消失，但这条记录里的关联必须留下：
+     * 展示时优先取当前名字，取不到（行已不存在）就回退到快照并标「（已删除）」。
+     */
+    val label: String? = null,
 )
 
 @Entity(
@@ -135,13 +141,14 @@ data class RecordPartnerCrossRef(
     primaryKeys = ["record_id", "sex_type_id"],
     foreignKeys = [
         ForeignKey(entity = RecordEntity::class, parentColumns = ["id"], childColumns = ["record_id"], onDelete = ForeignKey.CASCADE),
-        ForeignKey(entity = SexTypeEntity::class, parentColumns = ["id"], childColumns = ["sex_type_id"], onDelete = ForeignKey.CASCADE),
     ],
     indices = [Index("record_id"), Index("sex_type_id")],
 )
 data class RecordSexTypeCrossRef(
     @ColumnInfo(name = "record_id") val recordId: String,
     @ColumnInfo(name = "sex_type_id") val sexTypeId: String,
+    /** 关联当时的类型名快照；字典项被彻底删除后仍能还原历史。见 [RecordPartnerCrossRef.label]。 */
+    val label: String? = null,
 )
 
 @Entity(
@@ -149,13 +156,14 @@ data class RecordSexTypeCrossRef(
     primaryKeys = ["record_id", "position_id"],
     foreignKeys = [
         ForeignKey(entity = RecordEntity::class, parentColumns = ["id"], childColumns = ["record_id"], onDelete = ForeignKey.CASCADE),
-        ForeignKey(entity = PositionEntity::class, parentColumns = ["id"], childColumns = ["position_id"], onDelete = ForeignKey.CASCADE),
     ],
     indices = [Index("record_id"), Index("position_id")],
 )
 data class RecordPositionCrossRef(
     @ColumnInfo(name = "record_id") val recordId: String,
     @ColumnInfo(name = "position_id") val positionId: String,
+    /** 关联当时的姿势名快照；字典项被彻底删除后仍能还原历史。 */
+    val label: String? = null,
 )
 
 @Entity(
@@ -163,13 +171,14 @@ data class RecordPositionCrossRef(
     primaryKeys = ["record_id", "toy_id"],
     foreignKeys = [
         ForeignKey(entity = RecordEntity::class, parentColumns = ["id"], childColumns = ["record_id"], onDelete = ForeignKey.CASCADE),
-        ForeignKey(entity = ToyEntity::class, parentColumns = ["id"], childColumns = ["toy_id"], onDelete = ForeignKey.CASCADE),
     ],
     indices = [Index("record_id"), Index("toy_id")],
 )
 data class RecordToyCrossRef(
     @ColumnInfo(name = "record_id") val recordId: String,
     @ColumnInfo(name = "toy_id") val toyId: String,
+    /** 关联当时的玩具名快照；字典项被彻底删除后仍能还原历史。 */
+    val label: String? = null,
 )
 
 @Entity(
@@ -177,13 +186,14 @@ data class RecordToyCrossRef(
     primaryKeys = ["record_id", "location_id"],
     foreignKeys = [
         ForeignKey(entity = RecordEntity::class, parentColumns = ["id"], childColumns = ["record_id"], onDelete = ForeignKey.CASCADE),
-        ForeignKey(entity = LocationEntity::class, parentColumns = ["id"], childColumns = ["location_id"], onDelete = ForeignKey.CASCADE),
     ],
     indices = [Index("record_id"), Index("location_id")],
 )
 data class RecordLocationCrossRef(
     @ColumnInfo(name = "record_id") val recordId: String,
     @ColumnInfo(name = "location_id") val locationId: String,
+    /** 关联当时的地点名快照；字典项被彻底删除后仍能还原历史。 */
+    val label: String? = null,
 )
 
 // ---------------------------------------------------------------------------

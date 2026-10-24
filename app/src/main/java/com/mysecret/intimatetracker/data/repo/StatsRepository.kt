@@ -2,6 +2,7 @@ package com.mysecret.intimatetracker.data.repo
 
 import com.mysecret.intimatetracker.data.db.AppDatabase
 import com.mysecret.intimatetracker.data.db.CountItem
+import com.mysecret.intimatetracker.data.db.IdLabel
 import com.mysecret.intimatetracker.domain.withDeletedMarker
 import kotlinx.coroutines.flow.first
 import java.util.Locale
@@ -59,11 +60,24 @@ class StatsRepository @Inject constructor(
         val ratedCount = dao.protectionRisked(from, to, partnerId)
         val protectedCount = dao.protectionUsed(from, to, partnerId)
 
-        // 统计走「历史真相」：已删除的字典项仍参与排行，名字后加「（已删除）」
-        val typeNames = db.sexTypeDao().all().associate { it.id to it.name.withDeletedMarker(it.deletedAt != null) }
-        val locationNames = db.locationDao().all().associate { it.id to it.name.withDeletedMarker(it.deletedAt != null) }
-        val positionNames = db.positionDao().all().associate { it.id to it.name.withDeletedMarker(it.deletedAt != null) }
-        val toyNames = db.toyDao().all().associate { it.id to it.name.withDeletedMarker(it.deletedAt != null) }
+        // 统计走「历史真相」：已删除的字典项仍参与排行，名字后加「（已删除）」；
+        // 已彻底删除（物理删行）的项用关联快照补名，排行与分母都不缩水。
+        val typeNames = historyNames(
+            db.sexTypeDao().all().associate { it.id to it.name.withDeletedMarker(it.deletedAt != null) },
+            db.recordDao().sexTypeHistoryLabels(),
+        )
+        val locationNames = historyNames(
+            db.locationDao().all().associate { it.id to it.name.withDeletedMarker(it.deletedAt != null) },
+            db.recordDao().locationHistoryLabels(),
+        )
+        val positionNames = historyNames(
+            db.positionDao().all().associate { it.id to it.name.withDeletedMarker(it.deletedAt != null) },
+            db.recordDao().positionHistoryLabels(),
+        )
+        val toyNames = historyNames(
+            db.toyDao().all().associate { it.id to it.name.withDeletedMarker(it.deletedAt != null) },
+            db.recordDao().toyHistoryLabels(),
+        )
         val partnerNames = db.partnerDao().all().associate { it.id to it.name }
 
         val withLocation = dao.recordsWithLocation(from, to, partnerId)
@@ -121,6 +135,19 @@ class StatsRepository @Inject constructor(
             )
         }
 
+    /**
+     * 已彻底删除（物理删行）的字典项不在字典表里，用关联快照补名字并标「（已删除）」，
+     * 保证统计排行不因「彻底删除」少一项、占比分母也不变。
+     */
+    private fun historyNames(current: Map<String, String>, history: List<IdLabel>): Map<String, String> {
+        if (history.isEmpty()) return current
+        val missing = history.mapNotNull { row ->
+            if (row.id in current) return@mapNotNull null
+            val name = row.label?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            row.id to name.withDeletedMarker(true)
+        }
+        return if (missing.isEmpty()) current else current + missing.toMap()
+    }
 
     private fun Int?.orZero(): Int = this ?: 0
 

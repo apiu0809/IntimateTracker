@@ -60,7 +60,7 @@ class DatabaseTest {
     }
 
     @Test
-    fun hard_deleting_partner_cascades_to_cross_ref() = runBlocking {
+    fun hard_deleting_partner_keeps_cross_ref_for_history() = runBlocking {
         val now = System.currentTimeMillis()
         db.partnerDao().upsert(
             PartnerEntity(
@@ -75,14 +75,18 @@ class DatabaseTest {
         db.recordDao().upsert(
             RecordEntity(id = "r1", timestamp = now, createdAt = now, updatedAt = now),
         )
-        db.recordDao().linkPartner(RecordPartnerCrossRef(recordId = "r1", partnerId = "p1"))
+        db.recordDao().linkPartner(RecordPartnerCrossRef(recordId = "r1", partnerId = "p1", label = "测试伴侣"))
 
         assertEquals(1, db.recordDao().partnerLinkCount("p1"))
 
         db.partnerDao().hardDelete("p1")
 
-        assertEquals(0, db.recordDao().partnerLinkCount("p1"))
+        // 历史真相：彻底删除伴侣只删伴侣本身，记录与它的关联（含名字快照）必须留下
+        assertEquals(1, db.recordDao().partnerLinkCount("p1"))
         assertEquals(0, db.partnerDao().countActive())
+        val shown = db.recordDao().partnerLinkNames("r1").single()
+        assertEquals("测试伴侣", shown.name)
+        assertEquals("父行不存在时按历史真相标注已删除", true, shown.deleted)
     }
 
     @Test

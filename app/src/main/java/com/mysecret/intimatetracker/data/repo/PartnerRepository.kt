@@ -88,18 +88,20 @@ class PartnerRepository @Inject constructor(
         val now = System.currentTimeMillis()
         db.withTransaction {
             val existing = dao.findIncludingDeleted(id) ?: return@withTransaction
-            dao.upsert(
-                existing.copy(
-                    name = name.trim(),
-                    gender = gender,
-                    relationshipType = relationship,
-                    notes = notes?.trim()?.takeIf { it.isNotEmpty() },
-                    avatarPath = avatarPath ?: existing.avatarPath,
-                    isArchived = false,
-                    deletedAt = null,
-                    updatedAt = now,
-                ),
+            val restored = existing.copy(
+                name = name.trim(),
+                gender = gender,
+                relationshipType = relationship,
+                notes = notes?.trim()?.takeIf { it.isNotEmpty() },
+                avatarPath = avatarPath ?: existing.avatarPath,
+                isArchived = false,
+                deletedAt = null,
+                updatedAt = now,
             )
+            dao.upsert(restored)
+            if (existing.name != restored.name) {
+                db.recordDao().relabelPartner(restored.id, restored.name)
+            }
         }
         syncScheduler.onLocalChange()
     }
@@ -128,7 +130,14 @@ class PartnerRepository @Inject constructor(
             createdAt = existing?.createdAt ?: now,
             updatedAt = now,
         )
-        dao.upsert(entity)
+        db.withTransaction {
+            dao.upsert(entity)
+            // 改名同步刷新历史关联的快照：以后即使这个伴侣被彻底删除，
+            // 历史记录展示的也是「最后一次已知的名字」，而不是旧名字。
+            if (existing == null || existing.name != entity.name) {
+                db.recordDao().relabelPartner(entity.id, entity.name)
+            }
+        }
         syncScheduler.onLocalChange()
         return entity.id
     }
