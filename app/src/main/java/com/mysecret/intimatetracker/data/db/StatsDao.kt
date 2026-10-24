@@ -42,6 +42,7 @@ interface StatsDao {
         """
         SELECT COUNT(DISTINCT p.partner_id) FROM record r
         JOIN record_partner_cross_ref p ON p.record_id = r.id
+        JOIN partner pt ON pt.id = p.partner_id AND pt.deleted_at IS NULL AND pt.is_archived = 0
         WHERE r.deleted_at IS NULL AND r.timestamp BETWEEN :from AND :to
           AND (:partnerId IS NULL OR p.partner_id = :partnerId)
         """,
@@ -100,7 +101,6 @@ interface StatsDao {
         """
         SELECT x.sex_type_id AS itemKey, COUNT(*) AS count FROM record r
         JOIN record_sex_type_cross_ref x ON x.record_id = r.id
-        JOIN sex_type s ON s.id = x.sex_type_id AND s.deleted_at IS NULL
         WHERE r.deleted_at IS NULL AND r.timestamp BETWEEN :from AND :to
           AND (:partnerId IS NULL OR EXISTS (SELECT 1 FROM record_partner_cross_ref p WHERE p.record_id = r.id AND p.partner_id = :partnerId))
         GROUP BY x.sex_type_id ORDER BY count DESC
@@ -112,7 +112,6 @@ interface StatsDao {
         """
         SELECT x.location_id AS itemKey, COUNT(*) AS count FROM record r
         JOIN record_location_cross_ref x ON x.record_id = r.id
-        JOIN location l ON l.id = x.location_id AND l.deleted_at IS NULL
         WHERE r.deleted_at IS NULL AND r.timestamp BETWEEN :from AND :to
           AND (:partnerId IS NULL OR EXISTS (SELECT 1 FROM record_partner_cross_ref p WHERE p.record_id = r.id AND p.partner_id = :partnerId))
         GROUP BY x.location_id ORDER BY count DESC
@@ -124,7 +123,6 @@ interface StatsDao {
         """
         SELECT x.position_id AS itemKey, COUNT(*) AS count FROM record r
         JOIN record_position_cross_ref x ON x.record_id = r.id
-        JOIN position p2 ON p2.id = x.position_id AND p2.deleted_at IS NULL
         WHERE r.deleted_at IS NULL AND r.timestamp BETWEEN :from AND :to
           AND (:partnerId IS NULL OR EXISTS (SELECT 1 FROM record_partner_cross_ref p WHERE p.record_id = r.id AND p.partner_id = :partnerId))
         GROUP BY x.position_id ORDER BY count DESC
@@ -136,7 +134,6 @@ interface StatsDao {
         """
         SELECT x.toy_id AS itemKey, COUNT(*) AS count FROM record r
         JOIN record_toy_cross_ref x ON x.record_id = r.id
-        JOIN toy t ON t.id = x.toy_id AND t.deleted_at IS NULL
         WHERE r.deleted_at IS NULL AND r.timestamp BETWEEN :from AND :to
           AND (:partnerId IS NULL OR EXISTS (SELECT 1 FROM record_partner_cross_ref p WHERE p.record_id = r.id AND p.partner_id = :partnerId))
         GROUP BY x.toy_id ORDER BY count DESC
@@ -203,7 +200,7 @@ interface StatsDao {
         """
         SELECT p.partner_id AS itemKey, COUNT(*) AS count FROM record r
         JOIN record_partner_cross_ref p ON p.record_id = r.id
-        JOIN partner pt ON pt.id = p.partner_id AND pt.deleted_at IS NULL
+        JOIN partner pt ON pt.id = p.partner_id AND pt.deleted_at IS NULL AND pt.is_archived = 0
         WHERE r.deleted_at IS NULL AND r.timestamp BETWEEN :from AND :to
           AND (:partnerId IS NULL OR p.partner_id = :partnerId)
         GROUP BY p.partner_id ORDER BY count DESC

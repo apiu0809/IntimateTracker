@@ -1,5 +1,10 @@
 package com.mysecret.intimatetracker.ui.history
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -56,6 +61,7 @@ import com.mysecret.intimatetracker.data.db.PhotoEntity
 import java.io.File
 import com.mysecret.intimatetracker.R
 import com.mysecret.intimatetracker.data.db.RecordListRow
+import com.mysecret.intimatetracker.ui.component.AppBottomSheet
 import com.mysecret.intimatetracker.ui.component.RecordRowItem
 import com.mysecret.intimatetracker.ui.component.EmptyState
 import com.mysecret.intimatetracker.ui.component.ScreenScaffold
@@ -111,10 +117,17 @@ fun HistoryScreen(
                 modifier = Modifier.fillMaxWidth().weight(1f),
             ) { page ->
                 if (page == 0) {
-                    if (months.isEmpty()) {
-                        EmptyState(text = stringResource(R.string.history_empty))
-                    } else {
-                        ActivityList(months, onOpenRecord)
+                    AnimatedContent(
+                        targetState = months.isEmpty(),
+                        transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(120)) },
+                        modifier = Modifier.fillMaxSize(),
+                        label = "historyActivity",
+                    ) { empty ->
+                        if (empty) {
+                            EmptyState(text = stringResource(R.string.history_empty))
+                        } else {
+                            ActivityList(months, onOpenRecord)
+                        }
                     }
                 } else {
                     AlbumGrid(photos, onClick = { index ->
@@ -178,7 +191,11 @@ private fun ActivityList(months: List<HistoryMonth>, onOpenRecord: (String) -> U
                     )
                 }
                 items(count = day.rows.size, key = { index -> day.rows[index].record.id }) { index ->
-                    HistoryCard(row = day.rows[index], onClick = { onOpenRecord(day.rows[index].record.id) })
+                    HistoryCard(
+                        row = day.rows[index],
+                        onClick = { onOpenRecord(day.rows[index].record.id) },
+                        modifier = Modifier.animateItem(),
+                    )
                 }
             }
         }
@@ -187,8 +204,8 @@ private fun ActivityList(months: List<HistoryMonth>, onOpenRecord: (String) -> U
 }
 
 @Composable
-private fun HistoryCard(row: RecordListRow, onClick: () -> Unit) {
-    RecordRowItem(row = row, onClick = onClick)
+private fun HistoryCard(row: RecordListRow, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    RecordRowItem(row = row, onClick = onClick, modifier = modifier)
 }
 
 @Composable
@@ -233,7 +250,6 @@ private fun AlbumGrid(photos: List<com.mysecret.intimatetracker.data.db.PhotoWit
         }
     }
 }
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun HistoryFilterSheet(
     viewModel: HistoryViewModel,
@@ -241,75 +257,62 @@ private fun HistoryFilterSheet(
 ) {
     val filter = viewModel.filter
     val partners by viewModel.partners.collectAsStateWithLifecycle()
-    val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var pickingStart by remember { mutableStateOf(false) }
     var pickingEnd by remember { mutableStateOf(false) }
     val datePattern = java.time.format.DateTimeFormatter.ofPattern("yyyy年M月d日")
 
-    androidx.compose.material3.ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.background,
+    AppBottomSheet(
+        title = "筛选活动",
+        onDismiss = onDismiss,
+        actionLabel = "清除",
+        onAction = viewModel::clearFilter,
     ) {
-        Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "筛选活动",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = viewModel::clearFilter) {
-                    Text("清除", color = MaterialTheme.colorScheme.primary)
-                }
-            }
-            Text(
-                text = if (filter.isActive) "已筛选 ${filter.activeCount} 项" else "未筛选",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Text(
+            text = if (filter.isActive) "已筛选 ${filter.activeCount} 项" else "未筛选",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(20.dp))
+        Text(
+            text = "日期范围",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+        FilterDateRow(
+            label = "开始",
+            value = filter.start?.format(datePattern) ?: "不限日期",
+            onClick = { pickingStart = true },
+        )
+        FilterDateRow(
+            label = "结束",
+            value = filter.end?.format(datePattern) ?: "不限日期",
+            onClick = { pickingEnd = true },
+        )
+        Spacer(Modifier.height(20.dp))
+        Text(
+            text = "和谁一起",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(8.dp))
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            FilterChip(
+                selected = filter.onlySolo,
+                onClick = viewModel::toggleOnlySolo,
+                label = { Text("自慰") },
             )
-            Spacer(Modifier.height(20.dp))
-            Text(
-                text = "日期范围",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(8.dp))
-            FilterDateRow(
-                label = "开始",
-                value = filter.start?.format(datePattern) ?: "不限日期",
-                onClick = { pickingStart = true },
-            )
-            FilterDateRow(
-                label = "结束",
-                value = filter.end?.format(datePattern) ?: "不限日期",
-                onClick = { pickingEnd = true },
-            )
-            Spacer(Modifier.height(20.dp))
-            Text(
-                text = "和谁一起",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(8.dp))
-            androidx.compose.foundation.layout.FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
+            partners.forEach { partner ->
                 FilterChip(
-                    selected = filter.onlySolo,
-                    onClick = viewModel::toggleOnlySolo,
-                    label = { Text("自慰") },
+                    selected = partner.id in filter.partnerIds,
+                    onClick = { viewModel.togglePartner(partner.id) },
+                    label = { Text(partner.name) },
                 )
-                partners.forEach { partner ->
-                    FilterChip(
-                        selected = partner.id in filter.partnerIds,
-                        onClick = { viewModel.togglePartner(partner.id) },
-                        label = { Text(partner.name) },
-                    )
-                }
             }
         }
     }

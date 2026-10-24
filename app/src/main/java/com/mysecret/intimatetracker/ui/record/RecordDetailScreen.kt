@@ -14,11 +14,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -36,15 +36,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,6 +65,7 @@ import com.mysecret.intimatetracker.data.db.RecordEntity
 import com.mysecret.intimatetracker.domain.model.Initiator
 import com.mysecret.intimatetracker.domain.model.Protection
 import com.mysecret.intimatetracker.ui.component.EmptyState
+import com.mysecret.intimatetracker.ui.component.ScreenScaffold
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
@@ -78,7 +75,6 @@ import java.util.Locale
 
 private val titleFormatter = DateTimeFormatter.ofPattern("M月d日 EEEE", Locale.SIMPLIFIED_CHINESE)
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecordDetailScreen(
     onBack: () -> Unit,
@@ -96,55 +92,37 @@ fun RecordDetailScreen(
     var confirmDeletePhoto by remember { mutableStateOf<com.mysecret.intimatetracker.data.db.PhotoEntity?>(null) }
     var viewerIndex by remember { mutableStateOf<Int?>(null) }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = detail?.record?.let {
-                            titleFormatter.format(
-                                Instant.ofEpochMilli(it.timestamp).atZone(ZoneId.systemDefault()).toLocalDate(),
-                            )
-                        } ?: "",
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.action_close))
-                    }
-                },
-                actions = {
-                    detail?.record?.let { record ->
-                        IconButton(onClick = { onEdit(record.id) }) {
-                            Icon(
-                                Icons.Outlined.Edit,
-                                contentDescription = stringResource(R.string.record_detail_edit),
-                            )
-                        }
-                    }
-                    IconButton(onClick = { confirmDelete = true }) {
-                        Icon(
-                            Icons.Filled.DeleteOutline,
-                            contentDescription = stringResource(R.string.record_detail_delete),
-                            tint = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
-                ),
+    ScreenScaffold(
+        title = detail?.record?.let {
+            titleFormatter.format(
+                Instant.ofEpochMilli(it.timestamp).atZone(ZoneId.systemDefault()).toLocalDate(),
             )
+        } ?: "",
+        onBack = onBack,
+        actions = {
+            detail?.record?.let { record ->
+                IconButton(onClick = { onEdit(record.id) }) {
+                    Icon(
+                        Icons.Outlined.Edit,
+                        contentDescription = stringResource(R.string.record_detail_edit),
+                    )
+                }
+            }
+            IconButton(onClick = { confirmDelete = true }) {
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = stringResource(R.string.record_detail_delete),
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            }
         },
-    ) { padding ->
+    ) { modifier ->
         val current = detail
         if (current == null) {
-            EmptyState(text = stringResource(R.string.history_empty), modifier = Modifier.padding(padding))
+            EmptyState(text = stringResource(R.string.history_empty), modifier = modifier)
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
+                modifier = modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -234,7 +212,12 @@ fun RecordDetailScreen(
                 TextButton(onClick = {
                     viewModel.deletePhoto(photo)
                     confirmDeletePhoto = null
-                }) { Text(stringResource(R.string.action_delete)) }
+                }) {
+                    Text(
+                        text = stringResource(R.string.action_delete),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             },
             dismissButton = {
                 TextButton(onClick = { confirmDeletePhoto = null }) {
@@ -273,7 +256,12 @@ fun RecordDetailScreen(
                 TextButton(onClick = {
                     confirmDelete = false
                     viewModel.delete(onBack)
-                }) { Text(stringResource(R.string.action_delete)) }
+                }) {
+                    Text(
+                        text = stringResource(R.string.action_delete),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             },
             dismissButton = {
                 TextButton(onClick = { confirmDelete = false }) {
@@ -429,10 +417,13 @@ private fun PhotoCard(
                         )
                         androidx.compose.material3.IconButton(
                             onClick = { onDelete(photo) },
-                            modifier = Modifier.align(Alignment.TopEnd).size(28.dp),
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(28.dp)
+                                .clip(CircleShape),
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.DeleteOutline,
+                                imageVector = Icons.Outlined.Delete,
                                 contentDescription = stringResource(R.string.record_detail_delete),
                                 tint = Color.White,
                                 modifier = Modifier.size(22.dp),

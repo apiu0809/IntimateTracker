@@ -17,18 +17,15 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.mysecret.intimatetracker.ui.component.AppBottomSheet
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.mysecret.intimatetracker.data.repo.RhythmStats
@@ -56,7 +54,6 @@ fun rhythmRingColor(settings: RhythmSettings, daysSinceLast: Int?): Color =
 
 private val weekLabels = listOf("一", "二", "三", "四", "五", "六", "日")
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RhythmDetailSheet(
     stats: RhythmStats?,
@@ -64,41 +61,29 @@ fun RhythmDetailSheet(
     onDismiss: () -> Unit,
     onCustomize: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-    ) {
-        Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 32.dp)) {
-            Text(
-                text = "你的节奏",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.height(20.dp))
-            StatRow("距上次活动天数", stats?.daysSinceLast?.let { "$it 天" } ?: "—")
-            StatRow("最长间隔", stats?.longestGapDays?.let { "$it 天" } ?: "—")
-            StatRow(
-                "通常",
-                stats?.usualRange?.let { "每${it.first}-${it.last}天" } ?: "—",
-            )
-            Spacer(Modifier.height(20.dp))
-            Text(
-                text = "星期活动分布",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(12.dp))
-            WeekdayChart(stats?.weekdayCounts ?: List(7) { 0 })
-            Spacer(Modifier.height(24.dp))
-            Button(
-                onClick = onCustomize,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
-            ) {
-                Text("自订")
-            }
+    AppBottomSheet(title = "你的节奏", onDismiss = onDismiss) {
+        Spacer(Modifier.height(12.dp))
+        StatRow("距上次活动天数", stats?.daysSinceLast?.let { "$it 天" } ?: "—")
+        StatRow("最长间隔", stats?.longestGapDays?.let { "$it 天" } ?: "—")
+        StatRow(
+            "通常",
+            stats?.usualRange?.let { "每${it.first}-${it.last}天" } ?: "—",
+        )
+        Spacer(Modifier.height(20.dp))
+        Text(
+            text = "星期活动分布",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(12.dp))
+        WeekdayChart(stats?.weekdayCounts ?: List(7) { 0 })
+        Spacer(Modifier.height(24.dp))
+        Button(
+            onClick = onCustomize,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+        ) {
+            Text("自订")
         }
     }
 }

@@ -29,13 +29,13 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Tune
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
 import com.mysecret.intimatetracker.data.db.PartnerEntity
+import com.mysecret.intimatetracker.data.repo.DictionaryItem
+import com.mysecret.intimatetracker.domain.withDeletedMarker
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Accessibility
@@ -49,7 +49,6 @@ import androidx.compose.material.icons.outlined.PeopleAlt
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Mood
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -59,13 +58,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -88,8 +83,11 @@ import com.mysecret.intimatetracker.R
 import com.mysecret.intimatetracker.data.repo.FormField
 import com.mysecret.intimatetracker.domain.model.Initiator
 import com.mysecret.intimatetracker.domain.model.Protection
+import com.mysecret.intimatetracker.ui.component.AppBottomSheet
+import com.mysecret.intimatetracker.ui.component.FormSelectField
+import com.mysecret.intimatetracker.ui.component.FormTextField
 import com.mysecret.intimatetracker.ui.component.MultiChipGroup
-import com.mysecret.intimatetracker.ui.component.SelectionField
+import com.mysecret.intimatetracker.ui.component.ScreenScaffold
 import com.mysecret.intimatetracker.ui.component.StarRating
 import com.mysecret.intimatetracker.ui.component.Stepper
 import java.io.File
@@ -129,53 +127,29 @@ fun AddRecordScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showEmojiPicker by remember { mutableStateOf(false) }
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            stringResource(
-                                if (viewModel.isEditing) R.string.record_edit else R.string.record_new,
-                            ),
-                        )
-                        Text(
-                            text = dateFormat.format(Date(form.timestamp)),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.clickable { showDatePicker = true },
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onClose) {
-                        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.action_close))
-                    }
-                },
-                actions = {
-                    if (viewModel.isEditing) {
-                        IconButton(onClick = { confirmDelete = true }) {
-                            Icon(
-                                Icons.Filled.DeleteOutline,
-                                contentDescription = stringResource(R.string.record_detail_delete),
-                                tint = MaterialTheme.colorScheme.error,
-                            )
-                        }
-                    }
-                    TextButton(onClick = { viewModel.save(onClose) }) {
-                        Text(stringResource(R.string.action_save))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
-                ),
-            )
+    ScreenScaffold(
+        title = stringResource(if (viewModel.isEditing) R.string.record_edit else R.string.record_new),
+        subtitle = dateFormat.format(Date(form.timestamp)),
+        onSubtitleClick = { showDatePicker = true },
+        onBack = onClose,
+        closeIcon = true,
+        actions = {
+            if (viewModel.isEditing) {
+                IconButton(onClick = { confirmDelete = true }) {
+                    Icon(
+                        Icons.Outlined.Delete,
+                        contentDescription = stringResource(R.string.record_detail_delete),
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+            TextButton(onClick = { viewModel.save(onClose) }) {
+                Text(stringResource(R.string.action_save))
+            }
         },
-    ) { padding ->
+    ) { modifier ->
         LazyColumn(
-            modifier = Modifier.padding(padding).fillMaxSize(),
+            modifier = modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -211,7 +185,7 @@ fun AddRecordScreen(
                                 model = File(context.filesDir, photo.relPath),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(72.dp).clip(RoundedCornerShape(12.dp)),
+                                modifier = Modifier.size(72.dp).clip(RoundedCornerShape(12.dp)).animateItem(),
                             )
                         }
                         items(viewModel.pendingUris) { uri ->
@@ -219,13 +193,14 @@ fun AddRecordScreen(
                                 model = uri,
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
-                                modifier = Modifier.size(72.dp).clip(RoundedCornerShape(12.dp)),
+                                modifier = Modifier.size(72.dp).clip(RoundedCornerShape(12.dp)).animateItem(),
                             )
                         }
                         item {
                             Box(
                                 modifier = Modifier
                                     .size(72.dp)
+                                    .clip(RoundedCornerShape(12.dp))
                                     .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
                                     .clickable {
                                         picker.launch(
@@ -243,7 +218,7 @@ fun AddRecordScreen(
             if (show(FormField.PARTNER)) item {
                 FormCard(stringResource(R.string.partner_title), Icons.Outlined.PeopleAlt) {
                     PartnerChips(
-                        partners = partners,
+                        partners = partners.toChips(form.partnerIds),
                         selected = form.partnerIds,
                         onToggle = viewModel::togglePartner,
                     )
@@ -252,8 +227,7 @@ fun AddRecordScreen(
 
             if (show(FormField.INITIATOR)) item {
                 FormCard(stringResource(R.string.record_initiator), Icons.Outlined.MeetingRoom) {
-                    SelectionField(
-                        label = stringResource(R.string.record_initiator),
+                    FormSelectField(
                         value = when (form.initiator) {
                             Initiator.ME -> stringResource(R.string.initiator_me)
                             Initiator.PARTNER -> stringResource(R.string.initiator_partner)
@@ -266,7 +240,6 @@ fun AddRecordScreen(
                             Initiator.PARTNER to stringResource(R.string.initiator_partner),
                             Initiator.BOTH to stringResource(R.string.initiator_both),
                         ),
-                        showLabel = false,
                         onSelect = { value -> viewModel.update { it.copy(initiator = value) } },
                     )
                 }
@@ -310,7 +283,7 @@ fun AddRecordScreen(
             if (show(FormField.SEX_TYPE)) item {
                 FormCard(stringResource(R.string.record_type), Icons.Outlined.SwapHoriz) {
                     MultiChipGroup(
-                        items = sexTypes.filter { !it.isHidden }.map { it.id to it.name },
+                        items = sexTypes.toChipItems(form.sexTypeIds),
                         selected = form.sexTypeIds,
                         onToggle = viewModel::toggleSexType,
                     )
@@ -320,7 +293,7 @@ fun AddRecordScreen(
             if (show(FormField.TOY)) item {
                 FormCard(stringResource(R.string.dict_toy), Icons.Outlined.Category) {
                     MultiChipGroup(
-                        items = toys.filter { !it.isHidden }.map { it.id to it.name },
+                        items = toys.toChipItems(form.toyIds),
                         selected = form.toyIds,
                         onToggle = viewModel::toggleToy,
                     )
@@ -329,7 +302,7 @@ fun AddRecordScreen(
             if (show(FormField.LOCATION)) item {
                 FormCard(stringResource(R.string.dict_location), Icons.Outlined.LocationOn) {
                     MultiChipGroup(
-                        items = locations.filter { !it.isHidden }.map { it.id to it.name },
+                        items = locations.toChipItems(form.locationIds),
                         selected = form.locationIds,
                         onToggle = viewModel::toggleLocation,
                     )
@@ -339,7 +312,7 @@ fun AddRecordScreen(
             if (show(FormField.POSITION)) item {
                 FormCard(stringResource(R.string.dict_position), Icons.Outlined.Accessibility) {
                     MultiChipGroup(
-                        items = positions.filter { !it.isHidden }.map { it.id to it.name },
+                        items = positions.toChipItems(form.positionIds),
                         selected = form.positionIds,
                         onToggle = viewModel::togglePosition,
                     )
@@ -348,8 +321,7 @@ fun AddRecordScreen(
 
             if (show(FormField.PROTECTION)) item {
                 FormCard(stringResource(R.string.record_protection), Icons.Outlined.Shield) {
-                    SelectionField(
-                        label = stringResource(R.string.record_protection),
+                    FormSelectField(
                         value = when (form.protection) {
                             Protection.YES -> stringResource(R.string.protection_yes)
                             Protection.NO -> stringResource(R.string.protection_no)
@@ -362,7 +334,6 @@ fun AddRecordScreen(
                             Protection.NO to stringResource(R.string.protection_no),
                             Protection.UNKNOWN to stringResource(R.string.protection_unknown),
                         ),
-                        showLabel = false,
                         onSelect = { value -> viewModel.update { it.copy(protection = value) } },
                     )
                 }
@@ -392,12 +363,12 @@ fun AddRecordScreen(
 
             if (show(FormField.NOTES)) item {
                 FormCard(stringResource(R.string.record_notes), Icons.Outlined.Menu) {
-                    OutlinedTextField(
+                    FormTextField(
                         value = form.notes,
                         onValueChange = { value -> viewModel.update { it.copy(notes = value) } },
-                        placeholder = { Text(stringResource(R.string.record_notes_hint)) },
+                        placeholder = stringResource(R.string.record_notes_hint),
+                        singleLine = false,
                         minLines = 3,
-                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             }
@@ -448,7 +419,12 @@ fun AddRecordScreen(
                 TextButton(onClick = {
                     confirmDelete = false
                     viewModel.delete(onClose)
-                }) { Text(stringResource(R.string.action_delete)) }
+                }) {
+                    Text(
+                        text = stringResource(R.string.action_delete),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             },
             dismissButton = {
                 TextButton(onClick = { confirmDelete = false }) {
@@ -476,6 +452,19 @@ fun AddRecordScreen(
         ) {
             DatePicker(state = state)
         }
+    }
+
+    viewModel.saveError?.let { message ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissSaveError,
+            title = { Text(stringResource(R.string.record_save_failed)) },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissSaveError) {
+                    Text(stringResource(R.string.action_confirm))
+                }
+            },
+        )
     }
 
     if (showEmojiPicker) {
@@ -568,9 +557,21 @@ private fun EmojiPickerDialog(onDismiss: () -> Unit, onSelect: (String) -> Unit)
     )
 }
 
+private data class PartnerChip(val id: String, val name: String, val avatarPath: String?)
+
+/** 编辑记录时额外保留「已删 / 已归档但本记录已选中」的伙伴（历史真相），新建时只列当前可用。 */
+private fun List<PartnerEntity>.toChips(selected: Set<String>): List<PartnerChip> =
+    filter { it.id in selected || (it.deletedAt == null && !it.isArchived) }
+        .map { PartnerChip(it.id, it.name.withDeletedMarker(it.deletedAt != null), it.avatarPath) }
+
+/** 同上：已删的字典项只要被本记录选中就继续显示，并标「（已删除）」。 */
+private fun List<DictionaryItem>.toChipItems(selected: Set<String>): List<Pair<String, String>> =
+    filter { it.id in selected || !it.deleted }
+        .map { it.id to it.name.withDeletedMarker(it.deleted) }
+
 @Composable
 private fun PartnerChips(
-    partners: List<PartnerEntity>,
+    partners: List<PartnerChip>,
     selected: Set<String>,
     onToggle: (String) -> Unit,
 ) {
@@ -579,8 +580,8 @@ private fun PartnerChips(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        partners.forEach { partner ->
-            val isSelected = partner.id in selected
+        partners.forEach { chip ->
+            val isSelected = chip.id in selected
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
@@ -593,7 +594,7 @@ private fun PartnerChips(
                         },
                         shape = RoundedCornerShape(12.dp),
                     )
-                    .clickable { onToggle(partner.id) }
+                    .clickable { onToggle(chip.id) }
                     .padding(start = 6.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -604,7 +605,7 @@ private fun PartnerChips(
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                     contentAlignment = Alignment.Center,
                 ) {
-                    val avatar = partner.avatarPath
+                    val avatar = chip.avatarPath
                     if (avatar != null) {
                         AsyncImage(
                             model = File(context.filesDir, avatar),
@@ -614,7 +615,7 @@ private fun PartnerChips(
                         )
                     } else {
                         Text(
-                            text = partner.name.take(1),
+                            text = chip.name.take(1),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -622,7 +623,7 @@ private fun PartnerChips(
                 }
                 Spacer(Modifier.size(8.dp))
                 Text(
-                    text = partner.name,
+                    text = chip.name,
                     style = MaterialTheme.typography.bodyLarge,
                     color = if (isSelected) {
                         MaterialTheme.colorScheme.primary
@@ -635,14 +636,12 @@ private fun PartnerChips(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SimplifiedInputSheet(
     visibility: Map<FormField, Boolean>,
     onToggle: (FormField, Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val fields = listOf(
         FormField.ICON to "记录图示",
         FormField.PHOTO to "照片",
@@ -659,56 +658,39 @@ private fun SimplifiedInputSheet(
         FormField.PARTNER_ORGASM to "伴侣的高潮",
         FormField.NOTES to "备注",
     )
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.background,
+    AppBottomSheet(
+        title = "简化输入",
+        onDismiss = onDismiss,
+        actionLabel = "关闭",
+        onAction = onDismiss,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 32.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "简化输入",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = onDismiss) {
-                    Text("关闭", color = MaterialTheme.colorScheme.primary)
-                }
-            }
-            Text(
-                text = "在记录表单中隐藏你用不到的字段",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text = "至少要保留 2 个字段显示。",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 6.dp),
-            )
-            Spacer(Modifier.height(8.dp))
-            LazyColumn(Modifier.heightIn(max = 520.dp)) {
-                items(fields) { (field, label) ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Switch(
-                            checked = visibility[field] ?: true,
-                            onCheckedChange = { onToggle(field, it) },
-                        )
-                    }
+        Text(
+            text = "在记录表单中隐藏你用不到的字段",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = "至少要保留 2 个字段显示。",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+        Spacer(Modifier.height(8.dp))
+        LazyColumn(Modifier.heightIn(max = 520.dp)) {
+            items(fields) { (field, label) ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Switch(
+                        checked = visibility[field] ?: true,
+                        onCheckedChange = { onToggle(field, it) },
+                    )
                 }
             }
         }

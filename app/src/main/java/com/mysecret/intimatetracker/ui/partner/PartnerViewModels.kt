@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.mysecret.intimatetracker.data.db.PartnerEntity
 import com.mysecret.intimatetracker.data.repo.PartnerRepository
 import com.mysecret.intimatetracker.domain.model.Gender
 import com.mysecret.intimatetracker.domain.model.RelationshipType
@@ -17,17 +18,41 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class PartnerListViewModel @Inject constructor(repo: PartnerRepository) : ViewModel() {
+class PartnerListViewModel @Inject constructor(private val repo: PartnerRepository) : ViewModel() {
     val partners = kotlinx.coroutines.flow.combine(
         repo.observeActive(),
         repo.observeArchived(),
-    ) { active, archived -> PartnerListState(active, archived) }
+        repo.observeDeleted(),
+    ) { active, archived, deleted -> PartnerListState(active, archived, deleted) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PartnerListState())
+
+    fun restore(id: String) {
+        viewModelScope.launch { repo.restore(id) }
+    }
+
+    /** 彻底删除确认。 */
+    var pendingPurge by mutableStateOf<PartnerEntity?>(null)
+        private set
+
+    fun askPurge(partner: PartnerEntity) {
+        pendingPurge = partner
+    }
+
+    fun cancelPurge() {
+        pendingPurge = null
+    }
+
+    fun confirmPurge() {
+        val target = pendingPurge ?: return
+        pendingPurge = null
+        viewModelScope.launch { repo.purge(target.id) }
+    }
 }
 
 data class PartnerListState(
     val active: List<com.mysecret.intimatetracker.data.db.PartnerEntity> = emptyList(),
     val archived: List<com.mysecret.intimatetracker.data.db.PartnerEntity> = emptyList(),
+    val deleted: List<com.mysecret.intimatetracker.data.db.PartnerEntity> = emptyList(),
 )
 
 @HiltViewModel
@@ -103,12 +128,62 @@ class PartnerEditViewModel @Inject constructor(
         avatarPath = null
     }
 
+    /** 重名时提示；非空表示有待确认的同名伴侣（可能已被删除）。 */
+    var duplicate by mutableStateOf<PartnerEntity?>(null)
+        private set
+
+    private var pendingDone: (() -> Unit)? = null
+
     fun save(onDone: () -> Unit) {
         if (name.isBlank()) return
         viewModelScope.launch {
-            repo.save(partnerId, name, gender, relationship, notes, avatarPath)
+            val found = repo.findByName(name, excludeId = partnerId)
+            if (found == null) {
+                persist()
+                onDone()
+            } else {
+                duplicate = found
+                pendingDone = onDone
+            }
+        }
+    }
+
+    /** 重名确认：仍然保存。 */
+    fun saveAnyway() {
+        val done = pendingDone
+        duplicate = null
+        pendingDone = null
+        viewModelScope.launch {
+            persist()
+            done?.invoke()
+        }
+    }
+
+    /** 重名命中的是已删伴侣时，直接恢复它，并把这次填的资料一并写回。 */
+    fun restoreDuplicate(onDone: () -> Unit) {
+        val found = duplicate ?: return
+        duplicate = null
+        pendingDone = null
+        viewModelScope.launch {
+            repo.restoreAndUpdate(
+                id = found.id,
+                name = name,
+                gender = gender,
+                relationship = relationship,
+                notes = notes,
+                avatarPath = avatarPath,
+            )
             onDone()
         }
+    }
+
+    fun dismissDuplicate() {
+        duplicate = null
+        pendingDone = null
+    }
+
+    private suspend fun persist() {
+        repo.save(partnerId, name, gender, relationship, notes, avatarPath)
     }
 
     fun toggleArchive(onDone: () -> Unit) {

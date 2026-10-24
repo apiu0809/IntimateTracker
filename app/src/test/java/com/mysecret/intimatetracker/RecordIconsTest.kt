@@ -26,6 +26,12 @@ class RecordIconsTest {
     }
 
     @Test
+    fun `deleted type keeps its icon`() {
+        assertEquals("👅", RecordIcons.derive(null, listOf("口交（已删除）"), false, null, null).first())
+        assertEquals("🖐️", RecordIcons.derive(null, listOf("自慰（已删除）"), false, null, null).first())
+    }
+
+    @Test
     fun `fingering oral bdsm mapping`() {
         assertEquals("☝️", RecordIcons.derive(null, listOf("指交"), false, null, null).first())
         assertEquals("👅", RecordIcons.derive(null, listOf("口交"), false, null, null).first())

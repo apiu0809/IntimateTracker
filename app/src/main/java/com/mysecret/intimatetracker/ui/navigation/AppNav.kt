@@ -1,11 +1,17 @@
 package com.mysecret.intimatetracker.ui.navigation
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -88,6 +95,33 @@ private val tabs = listOf(
     TabItem(Routes.MORE, R.string.tab_more, Icons.Outlined.MoreHoriz),
 )
 
+private val tabRoutes = tabs.mapTo(HashSet()) { it.route }
+
+/** 全屏模态编辑 / 详情页：保持底部上滑的转场。 */
+private val editorRoutes = setOf(
+    Routes.PARTNER_NEW,
+    Routes.PARTNER_EDIT,
+    Routes.RECORD_NEW,
+    Routes.RECORD_DETAIL,
+    Routes.RECORD_EDIT,
+)
+
+/** 从 tab 下钻的普通二级页：统一从右侧滑入、返回时滑出。 */
+private val secondaryRoutes = setOf(
+    Routes.PREFS,
+    Routes.ABOUT,
+    Routes.ABOUT_CHANGELOG,
+    Routes.ABOUT_PRIVACY,
+    Routes.ABOUT_LICENSES,
+    Routes.WEBDAV,
+    Routes.DICTIONARY,
+)
+
+private const val TAB_FADE_OUT = 90
+private const val TAB_FADE_IN = 210
+private const val PAGE_SLIDE = 300
+
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun AppNav() {
     val navController = rememberNavController()
@@ -99,14 +133,69 @@ fun AppNav() {
         containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         Box(Modifier.fillMaxSize().padding(innerPadding)) {
+            SharedTransitionLayout(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zIndex(if (isTabRoute) 0f else 1f),
+            ) {
+            val sharedScope = this
             NavHost(
                 navController = navController,
                 startDestination = Routes.CALENDAR,
                 modifier = Modifier.fillMaxSize(),
-                enterTransition = { fadeIn(tween(140)) },
-                exitTransition = { fadeOut(tween(90)) },
-                popEnterTransition = { fadeIn(tween(140)) },
-                popExitTransition = { fadeOut(tween(90)) },
+                enterTransition = {
+                    val from = initialState.destination.route
+                    val to = targetState.destination.route
+                    when {
+                        from in tabRoutes && to in tabRoutes ->
+                            fadeIn(tween(TAB_FADE_IN, delayMillis = TAB_FADE_OUT))
+                        to in secondaryRoutes ->
+                            slideInHorizontally(
+                                animationSpec = tween(PAGE_SLIDE, easing = FastOutSlowInEasing),
+                                initialOffsetX = { it },
+                            ) + fadeIn(tween(220))
+                        else -> fadeIn(tween(180))
+                    }
+                },
+                exitTransition = {
+                    val from = initialState.destination.route
+                    val to = targetState.destination.route
+                    when {
+                        // 编辑页从底部盖上时，让下面的 tab 留在原位，避免闪一下空背景
+                        from in tabRoutes && to in editorRoutes -> ExitTransition.None
+                        from in tabRoutes -> fadeOut(tween(TAB_FADE_OUT))
+                        else -> slideOutHorizontally(
+                            animationSpec = tween(PAGE_SLIDE, easing = FastOutSlowInEasing),
+                            targetOffsetX = { -it / 4 },
+                        ) + fadeOut(tween(160))
+                    }
+                },
+                popEnterTransition = {
+                    val from = initialState.destination.route
+                    val to = targetState.destination.route
+                    when {
+                        from in editorRoutes && to in tabRoutes -> EnterTransition.None
+                        from in tabRoutes && to in tabRoutes ->
+                            fadeIn(tween(TAB_FADE_IN, delayMillis = TAB_FADE_OUT))
+                        from in secondaryRoutes && to in tabRoutes -> fadeIn(tween(200))
+                        else -> slideInHorizontally(
+                            animationSpec = tween(PAGE_SLIDE, easing = FastOutSlowInEasing),
+                            initialOffsetX = { -it / 4 },
+                        ) + fadeIn(tween(200))
+                    }
+                },
+                popExitTransition = {
+                    val from = initialState.destination.route
+                    val to = targetState.destination.route
+                    when {
+                        from in secondaryRoutes -> slideOutHorizontally(
+                            animationSpec = tween(PAGE_SLIDE, easing = FastOutSlowInEasing),
+                            targetOffsetX = { it },
+                        ) + fadeOut(tween(180))
+                        from in tabRoutes && to in tabRoutes -> fadeOut(tween(TAB_FADE_OUT))
+                        else -> fadeOut(tween(120))
+                    }
+                },
             ) {
             composable(Routes.CALENDAR) {
                 CalendarScreen(
@@ -122,6 +211,8 @@ fun AppNav() {
                 PartnerListScreen(
                     onAdd = { navController.navigate(Routes.PARTNER_NEW) },
                     onOpen = { id -> navController.navigate(Routes.partnerEdit(id)) },
+                    sharedTransitionScope = sharedScope,
+                    animatedVisibilityScope = this,
                 )
             }
             composable(Routes.MORE) {
@@ -147,6 +238,8 @@ fun AppNav() {
                 PartnerEditScreen(
                     partnerId = entry.arguments?.getString("partnerId"),
                     onDone = { navController.popBackStack() },
+                    sharedTransitionScope = sharedScope,
+                    animatedVisibilityScope = this,
                 )
             }
             composable(Routes.RECORD_NEW,
@@ -204,12 +297,16 @@ fun AppNav() {
                 )
             }
             }
-
-            if (isTabRoute) {
+            }
+            AnimatedVisibility(
+                visible = isTabRoute,
+                enter = fadeIn(tween(180)) + slideInVertically(tween(240)) { it / 5 },
+                exit = fadeOut(tween(120)) + slideOutVertically(tween(160)) { it / 5 },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            ) {
                 BottomBar(
                     currentRoute = currentRoute,
                     navController = navController,
-                    modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }
         }

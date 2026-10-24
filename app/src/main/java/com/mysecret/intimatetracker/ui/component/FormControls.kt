@@ -1,28 +1,25 @@
 package com.mysecret.intimatetracker.ui.component
 
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,49 +29,98 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
+/**
+ * 表单输入框：与「新增伴侣」一致的外框样式（8dp 圆角、18sp 正文、浮动标签）。
+ * 伴侣页、字典弹窗、记录表单共用，改这里即可同时生效。
+ */
 @Composable
-fun <T> SelectionField(
-    label: String,
+fun FormTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String? = null,
+    placeholder: String? = null,
+    modifier: Modifier = Modifier,
+    singleLine: Boolean = true,
+    minLines: Int = 1,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = if (label != null) {
+            { Text(label) }
+        } else {
+            null
+        },
+        placeholder = if (placeholder != null) {
+            { Text(placeholder) }
+        } else {
+            null
+        },
+        singleLine = singleLine,
+        minLines = minLines,
+        shape = RoundedCornerShape(8.dp),
+        textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
+        modifier = modifier.fillMaxWidth(),
+    )
+}
+
+/**
+ * 表单选项框：与 [FormTextField] 同一套外框（8dp 圆角、18sp 正文、浮动标签），
+ * 点击整块区域弹出下拉菜单。[label] 为空时不画浮动标签（如记录表单，分组卡标题即标签）。
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun <T> FormSelectField(
     value: String,
     options: List<Pair<T, String>>,
     onSelect: (T) -> Unit,
-    showLabel: Boolean = true,
+    label: String? = null,
+    modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    Column(Modifier.fillMaxWidth()) {
-        if (showLabel) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(4.dp))
-        }
-        Box {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, MaterialTheme.colorScheme.outline, androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
-                    .clickable { expanded = true }
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(value, style = MaterialTheme.typography.bodyLarge)
-                Icon(Icons.Filled.ArrowDropDown, contentDescription = null)
-            }
-            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                options.forEach { (item, text) ->
-                    DropdownMenuItem(
-                        text = { Text(text) },
-                        onClick = {
-                            onSelect(item)
-                            expanded = false
-                        },
-                    )
-                }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            readOnly = true,
+            singleLine = true,
+            label = if (label != null) {
+                { Text(label) }
+            } else {
+                null
+            },
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Filled.ArrowDropDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            },
+            shape = RoundedCornerShape(8.dp),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            options.forEach { (item, text) ->
+                DropdownMenuItem(
+                    text = { Text(text) },
+                    onClick = {
+                        onSelect(item)
+                        expanded = false
+                    },
+                )
             }
         }
     }

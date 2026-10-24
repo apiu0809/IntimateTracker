@@ -10,6 +10,7 @@ import com.mysecret.intimatetracker.data.db.RecordPartnerCrossRef
 import com.mysecret.intimatetracker.data.db.RecordPositionCrossRef
 import com.mysecret.intimatetracker.data.db.RecordSexTypeCrossRef
 import com.mysecret.intimatetracker.data.db.RecordToyCrossRef
+import com.mysecret.intimatetracker.data.db.TombstoneEntity
 import com.mysecret.intimatetracker.data.db.SettingEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -187,15 +188,37 @@ class SyncManager @Inject constructor(
             .build()
         var changed = 0
         try {
+            val remoteTombs = remote.tombstoneDao().all()
+            val localTombKeys = db.tombstoneDao().all().mapTo(HashSet()) { it.tableName to it.rowId }
+
+            // 伴侣：跳过本地已「彻底删除」的 id，并执行远端墓碑
             remote.partnerDao().allForSync().forEach { partner ->
+                if (("partner" to partner.id) in localTombKeys) return@forEach
                 val local = db.partnerDao().findIncludingDeleted(partner.id)
                 if (local == null || partner.updatedAt > local.updatedAt) {
                     db.partnerDao().upsert(partner)
                     changed++
                 }
             }
-            mergeDictionaries(remote)
-            changed += mergeRecords(remote)
+            remoteTombs.filter { it.tableName == "partner" }.forEach { tomb ->
+                if (("partner" to tomb.rowId) !in localTombKeys) {
+                    db.partnerDao().hardDelete(tomb.rowId)
+                    db.tombstoneDao().put(tomb)
+                    changed++
+                }
+            }
+
+            changed += mergeDictionaries(remote, localTombKeys, remoteTombs)
+
+            // 关联表只保留本地仍存在的 id，避免彻底删除后外键失败
+            val links = LinkIds(
+                partners = db.partnerDao().allForSync().mapTo(HashSet()) { it.id },
+                sexTypes = db.sexTypeDao().all().mapTo(HashSet()) { it.id },
+                positions = db.positionDao().all().mapTo(HashSet()) { it.id },
+                toys = db.toyDao().all().mapTo(HashSet()) { it.id },
+                locations = db.locationDao().all().mapTo(HashSet()) { it.id },
+            )
+            changed += mergeRecords(remote, links)
             changed += mergePhotos(remote)
         } finally {
             remote.close()
@@ -204,32 +227,103 @@ class SyncManager @Inject constructor(
         return changed
     }
 
-    private suspend fun mergeDictionaries(remote: AppDatabase) {
-        remote.sexTypeDao().all().forEach { item ->
-            val local = db.sexTypeDao().byId(item.id)
-            if (local == null || item.updatedAt > local.updatedAt) db.sexTypeDao().upsert(item)
+    private data class LinkIds(
+        val partners: Set<String>,
+        val sexTypes: Set<String>,
+        val positions: Set<String>,
+        val toys: Set<String>,
+        val locations: Set<String>,
+    )
+
+    /**
+     * 字典合并：逐行 LWW（含软删行，避免「本地软删、远端旧行」把删除覆盖掉）+ 墓碑。
+     *
+     * 规则：
+     * - 本地有墓碑的 id：忽略远端任何版本（彻底删除优先）；
+     * - 远端有墓碑的 id：本地物理删除并记下墓碑；
+     * - 其余按 `updated_at` 新者胜。
+     */
+    private suspend fun mergeDictionaries(
+        remote: AppDatabase,
+        localTombKeys: Set<Pair<String, String>>,
+        remoteTombs: List<TombstoneEntity>,
+    ): Int {
+        suspend fun <T> mergeTable(
+            table: String,
+            remoteRows: List<T>,
+            localRow: suspend (String) -> T?,
+            upsert: suspend (T) -> Unit,
+            hardDelete: suspend (String) -> Unit,
+            id: (T) -> String,
+            updatedAt: (T) -> Long,
+        ): Int {
+            var count = 0
+            remoteRows.forEach { row ->
+                val rowId = id(row)
+                if ((table to rowId) in localTombKeys) return@forEach
+                val local = localRow(rowId)
+                if (local == null || updatedAt(row) > updatedAt(local)) {
+                    upsert(row)
+                    count++
+                }
+            }
+            remoteTombs.filter { it.tableName == table }.forEach { tomb ->
+                if ((table to tomb.rowId) !in localTombKeys) {
+                    hardDelete(tomb.rowId)
+                    db.tombstoneDao().put(tomb)
+                    count++
+                }
+            }
+            return count
         }
-        remote.positionDao().all().forEach { item ->
-            val local = db.positionDao().byId(item.id)
-            if (local == null || item.updatedAt > local.updatedAt) db.positionDao().upsert(item)
-        }
-        remote.toyDao().all().forEach { item ->
-            val local = db.toyDao().byId(item.id)
-            if (local == null || item.updatedAt > local.updatedAt) db.toyDao().upsert(item)
-        }
-        remote.locationDao().all().forEach { item ->
-            val local = db.locationDao().byId(item.id)
-            if (local == null || item.updatedAt > local.updatedAt) db.locationDao().upsert(item)
-        }
+
+        var changed = 0
+        changed += mergeTable(
+            table = "sex_type",
+            remoteRows = remote.sexTypeDao().all(),
+            localRow = { db.sexTypeDao().byIdIncludingDeleted(it) },
+            upsert = { db.sexTypeDao().upsert(it) },
+            hardDelete = { db.sexTypeDao().hardDelete(it) },
+            id = { it.id },
+            updatedAt = { it.updatedAt },
+        )
+        changed += mergeTable(
+            table = "position",
+            remoteRows = remote.positionDao().all(),
+            localRow = { db.positionDao().byIdIncludingDeleted(it) },
+            upsert = { db.positionDao().upsert(it) },
+            hardDelete = { db.positionDao().hardDelete(it) },
+            id = { it.id },
+            updatedAt = { it.updatedAt },
+        )
+        changed += mergeTable(
+            table = "toy",
+            remoteRows = remote.toyDao().all(),
+            localRow = { db.toyDao().byIdIncludingDeleted(it) },
+            upsert = { db.toyDao().upsert(it) },
+            hardDelete = { db.toyDao().hardDelete(it) },
+            id = { it.id },
+            updatedAt = { it.updatedAt },
+        )
+        changed += mergeTable(
+            table = "location",
+            remoteRows = remote.locationDao().all(),
+            localRow = { db.locationDao().byIdIncludingDeleted(it) },
+            upsert = { db.locationDao().upsert(it) },
+            hardDelete = { db.locationDao().hardDelete(it) },
+            id = { it.id },
+            updatedAt = { it.updatedAt },
+        )
+        return changed
     }
 
-    private suspend fun mergeRecords(remote: AppDatabase): Int {
+    private suspend fun mergeRecords(remote: AppDatabase, links: LinkIds): Int {
         var changed = 0
         remote.recordDao().allForSync().forEach { record ->
             val local = db.recordDao().findIncludingDeleted(record.id)
             if (local == null || record.updatedAt > local.updatedAt) {
                 db.recordDao().upsert(record)
-                copyLinks(remote, record.id)
+                copyLinks(remote, record.id, links)
                 changed++
             }
         }
@@ -252,25 +346,25 @@ class SyncManager @Inject constructor(
         return changed
     }
 
-    private suspend fun copyLinks(remote: AppDatabase, recordId: String) {
+    private suspend fun copyLinks(remote: AppDatabase, recordId: String, links: LinkIds) {
         db.recordDao().clearPartners(recordId)
         db.recordDao().clearSexTypes(recordId)
         db.recordDao().clearPositions(recordId)
         db.recordDao().clearToys(recordId)
         db.recordDao().clearLocations(recordId)
-        remote.recordDao().partnerIds(recordId).forEach {
+        remote.recordDao().partnerIds(recordId).filter { it in links.partners }.forEach {
             db.recordDao().linkPartner(RecordPartnerCrossRef(recordId, it))
         }
-        remote.recordDao().sexTypeIds(recordId).forEach {
+        remote.recordDao().sexTypeIds(recordId).filter { it in links.sexTypes }.forEach {
             db.recordDao().linkSexType(RecordSexTypeCrossRef(recordId, it))
         }
-        remote.recordDao().positionIds(recordId).forEach {
+        remote.recordDao().positionIds(recordId).filter { it in links.positions }.forEach {
             db.recordDao().linkPosition(RecordPositionCrossRef(recordId, it))
         }
-        remote.recordDao().toyIds(recordId).forEach {
+        remote.recordDao().toyIds(recordId).filter { it in links.toys }.forEach {
             db.recordDao().linkToy(RecordToyCrossRef(recordId, it))
         }
-        remote.recordDao().locationIds(recordId).forEach {
+        remote.recordDao().locationIds(recordId).filter { it in links.locations }.forEach {
             db.recordDao().linkLocation(RecordLocationCrossRef(recordId, it))
         }
     }

@@ -1,7 +1,7 @@
 package com.mysecret.intimatetracker.ui.component
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,9 +43,15 @@ import java.io.File
  * 日历与历史共用。
  */
 @Composable
-fun RecordRowItem(row: RecordListRow, onClick: () -> Unit, showIcons: Boolean = true) {
+fun RecordRowItem(
+    row: RecordListRow,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    showIcons: Boolean = true,
+) {
     val record = row.record
     val context = LocalContext.current
+    val interactionSource = remember { MutableInteractionSource() }
     val hasPartner = row.partnerList.isNotEmpty()
     val title = if (hasPartner) row.partnerList.joinToString("、") else "时刻"
     val subtitle = buildList {
@@ -53,11 +60,14 @@ fun RecordRowItem(row: RecordListRow, onClick: () -> Unit, showIcons: Boolean = 
         row.typeList.firstOrNull()?.let { add(it) }
     }.joinToString(" · ")
 
+    val shape = RoundedCornerShape(20.dp)
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth().pressScale(interactionSource),
+        shape = shape,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        interactionSource = interactionSource,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),

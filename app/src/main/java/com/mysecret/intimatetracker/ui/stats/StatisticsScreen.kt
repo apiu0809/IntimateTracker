@@ -1,5 +1,14 @@
 package com.mysecret.intimatetracker.ui.stats
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.foundation.layout.offset
@@ -35,6 +44,7 @@ import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -43,6 +53,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -57,6 +68,7 @@ import com.mysecret.intimatetracker.data.repo.NamedCount
 import com.mysecret.intimatetracker.data.repo.StatsSnapshot
 import com.mysecret.intimatetracker.ui.component.EmptyState
 import com.mysecret.intimatetracker.ui.component.ScreenScaffold
+import com.mysecret.intimatetracker.ui.component.rememberAnimationsEnabled
 import kotlin.math.roundToInt
 
 private data class StatsTab(val labelRes: Int)
@@ -203,6 +215,7 @@ private fun FilterChipBox(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
+                .clip(RoundedCornerShape(8.dp))
                 .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
                 .clickable { expanded = true }
                 .padding(start = 16.dp, end = 12.dp),
@@ -372,11 +385,20 @@ private fun StatCard(
                 )
             }
             Spacer(Modifier.height(6.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineMedium.copy(fontSize = 26.sp, lineHeight = 32.sp),
-                fontWeight = FontWeight.Bold,
-            )
+            AnimatedContent(
+                targetState = value,
+                transitionSpec = {
+                    (fadeIn(tween(200)) + slideInVertically(tween(220)) { it / 3 }) togetherWith
+                        (fadeOut(tween(120)) + slideOutVertically(tween(160)) { -it / 3 })
+                },
+                label = "statValue",
+            ) { shown ->
+                Text(
+                    text = shown,
+                    style = MaterialTheme.typography.headlineMedium.copy(fontSize = 26.sp, lineHeight = 32.sp),
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
     }
 }
@@ -422,6 +444,15 @@ private fun RankTab(total: Int, filled: Int, items: List<NamedCount>) {
 
 @Composable
 private fun RankRow(item: NamedCount) {
+    val animationsEnabled = rememberAnimationsEnabled()
+    var appeared by remember { mutableStateOf(!animationsEnabled) }
+    LaunchedEffect(Unit) { appeared = true }
+    val targetProgress = (item.percent / 100.0).toFloat().coerceIn(0f, 1f)
+    val progress by animateFloatAsState(
+        targetValue = if (appeared) targetProgress else 0f,
+        animationSpec = tween(500, easing = FastOutSlowInEasing),
+        label = "rankProgress",
+    )
     Column(Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -436,7 +467,7 @@ private fun RankRow(item: NamedCount) {
         }
         Spacer(Modifier.height(4.dp))
         LinearProgressIndicator(
-            progress = { (item.percent / 100.0).toFloat().coerceIn(0f, 1f) },
+            progress = { progress },
             modifier = Modifier.fillMaxWidth().height(8.dp),
         )
     }
@@ -494,6 +525,9 @@ private fun BarTab(points: List<MonthPoint>, total: Int) {
         return
     }
     val max = points.maxOf { it.value }.coerceAtLeast(1)
+    val animationsEnabled = rememberAnimationsEnabled()
+    var appeared by remember { mutableStateOf(!animationsEnabled) }
+    LaunchedEffect(Unit) { appeared = true }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 112.dp),
@@ -525,7 +559,12 @@ private fun BarTab(points: List<MonthPoint>, total: Int) {
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        val heightFraction = point.value.toFloat() / max
+                        val targetFraction = point.value.toFloat() / max
+                        val heightFraction by animateFloatAsState(
+                            targetValue = if (appeared) targetFraction else 0f,
+                            animationSpec = tween(450, easing = FastOutSlowInEasing),
+                            label = "monthBarHeight",
+                        )
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -549,6 +588,9 @@ private fun BarTab(points: List<MonthPoint>, total: Int) {
 private fun WeekdayChart(counts: List<Int>) {
     val labels = listOf("一", "二", "三", "四", "五", "六", "日")
     val max = counts.maxOrNull()?.coerceAtLeast(1) ?: 1
+    val animationsEnabled = rememberAnimationsEnabled()
+    var appeared by remember { mutableStateOf(!animationsEnabled) }
+    LaunchedEffect(Unit) { appeared = true }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -566,10 +608,16 @@ private fun WeekdayChart(counts: List<Int>) {
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                val targetFraction = value.toFloat() / max
+                val fraction by animateFloatAsState(
+                    targetValue = if (appeared) targetFraction else 0f,
+                    animationSpec = tween(450, easing = FastOutSlowInEasing),
+                    label = "weekdayBarHeight",
+                )
                 Box(
                     modifier = Modifier
                         .width(20.dp)
-                        .height((110 * (value.toFloat() / max)).dp.coerceAtLeast(2.dp))
+                        .height((110 * fraction).dp.coerceAtLeast(2.dp))
                         .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp)),
                 )
                 Spacer(Modifier.height(4.dp))

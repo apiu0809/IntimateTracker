@@ -23,7 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.BugReport
-import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Lock
@@ -116,7 +116,7 @@ fun AboutScreen(
             SettingRow(
                 title = stringResource(R.string.more_clear),
                 subtitle = stringResource(R.string.about_clear_sub),
-                icon = Icons.Outlined.DeleteSweep,
+                icon = Icons.Outlined.Delete,
                 titleColor = MaterialTheme.colorScheme.error,
                 iconTint = MaterialTheme.colorScheme.error,
                 onClick = { showClear = true },
@@ -225,7 +225,12 @@ fun AboutScreen(
                 TextButton(onClick = {
                     showClear = false
                     moreViewModel.clearAll()
-                }) { Text(stringResource(R.string.about_clear_action)) }
+                }) {
+                    Text(
+                        text = stringResource(R.string.about_clear_action),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
             },
             dismissButton = {
                 TextButton(onClick = { showClear = false }) {

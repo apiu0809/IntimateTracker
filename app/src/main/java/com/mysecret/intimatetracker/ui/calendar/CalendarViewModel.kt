@@ -15,6 +15,7 @@ import com.mysecret.intimatetracker.data.repo.SettingsRepository
 import com.mysecret.intimatetracker.data.repo.RhythmStats
 import com.mysecret.intimatetracker.domain.RecordIcons
 import com.mysecret.intimatetracker.domain.RhythmSettings
+import com.mysecret.intimatetracker.domain.withoutDeletedMarker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +42,7 @@ data class CalendarFilter(
     fun matches(entry: CalendarEntry): Boolean {
         if (!isActive) return true
         if (partnerIds.isNotEmpty() && entry.partnerIdList.any { it in partnerIds }) return true
-        return onlySolo && "自慰" in entry.typeList
+        return onlySolo && entry.typeList.any { it.withoutDeletedMarker() == "自慰" }
     }
 }
 
@@ -108,6 +109,14 @@ class CalendarViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
+        // 伴侣被删/归档后从筛选里剔除，避免出现「看不见但仍在生效」的筛选条件
+        viewModelScope.launch {
+            partners.collect { list ->
+                val activeIds = list.mapTo(HashSet()) { it.id }
+                val kept = filter.partnerIds.filterTo(LinkedHashSet()) { it in activeIds }
+                if (kept.size != filter.partnerIds.size) applyFilter(filter.copy(partnerIds = kept))
+            }
+        }
         viewModelScope.launch {
             rhythmSettings = settingsRepo.rhythmSettings()
             rhythmSettingsFlow.value = rhythmSettings

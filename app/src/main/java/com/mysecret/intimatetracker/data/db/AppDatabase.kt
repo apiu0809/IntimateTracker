@@ -22,7 +22,7 @@ import androidx.room.RoomDatabase
         RecordToyCrossRef::class,
         RecordLocationCrossRef::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -36,6 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun photoDao(): PhotoDao
     abstract fun templateDao(): TemplateDao
     abstract fun statsDao(): StatsDao
+    abstract fun tombstoneDao(): TombstoneDao
 
     companion object {
         const val NAME = "tracker.db"

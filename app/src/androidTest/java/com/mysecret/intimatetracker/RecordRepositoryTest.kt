@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mysecret.intimatetracker.data.db.AppDatabase
 import com.mysecret.intimatetracker.data.db.PartnerEntity
+import com.mysecret.intimatetracker.data.db.PhotoEntity
 import com.mysecret.intimatetracker.data.db.PositionEntity
 import com.mysecret.intimatetracker.data.db.Seeder
 import com.mysecret.intimatetracker.data.repo.RecordDraft
@@ -154,6 +155,49 @@ class RecordRepositoryTest {
         assertEquals(listOf("st_001"), draft.sexTypeIds)
         assertEquals(listOf("pos_003"), draft.positionIds)
         assertEquals(listOf("loc_001"), draft.locationIds)
+    }
+
+    @Test
+    fun save_drops_links_to_ids_that_no_longer_exist() = runBlocking {
+        // 模拟「表单开着时，别处把选中项彻底删掉了」：写交叉表不能撞外键
+        db.partnerDao().hardDelete("p1")
+
+        val id = repository.save(
+            RecordDraft(
+                timestamp = base,
+                partnerIds = listOf("p1", "p_missing"),
+                sexTypeIds = listOf("st_001", "st_missing"),
+                locationIds = listOf("loc_missing"),
+            ),
+        )
+
+        val saved = repository.find(id)
+        assertNotNull(saved)
+        assertTrue("没有有效伴侣时按单人记录", saved!!.isSolo)
+        assertEquals(0, db.recordDao().partnerLinkCount("p1"))
+
+        val row = repository.observeBetween(base - day, base + day).first().single()
+        assertEquals("悬空 id 被过滤，只留下仍存在的类型", listOf("阴道性交"), row.typeList)
+        assertTrue("地点全被过滤时列表为空", row.locationList.isEmpty())
+    }
+
+    @Test
+    fun editing_a_record_keeps_its_photos() = runBlocking {
+        val id = repository.save(RecordDraft(timestamp = base, partnerIds = listOf("p1")))
+        val now = 1_700_000_000_000L
+        db.photoDao().insert(
+            PhotoEntity(
+                id = "ph1",
+                recordId = id,
+                relPath = "images/2024/01/ph1.jpg",
+                createdAt = now,
+                updatedAt = now,
+            ),
+        )
+
+        repository.save(RecordDraft(id = id, timestamp = base, notes = "改备注"))
+
+        assertEquals("编辑记录不能把照片级联删掉", 1, db.photoDao().byRecord(id).size)
     }
 
     @Test

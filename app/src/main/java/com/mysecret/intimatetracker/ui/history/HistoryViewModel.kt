@@ -10,11 +10,13 @@ import com.mysecret.intimatetracker.data.db.RecordListRow
 import com.mysecret.intimatetracker.data.repo.PartnerRepository
 import com.mysecret.intimatetracker.data.repo.PhotoRepository
 import com.mysecret.intimatetracker.data.repo.RecordRepository
+import com.mysecret.intimatetracker.domain.withoutDeletedMarker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -52,7 +54,7 @@ data class HistoryFilter(
         val partners = row.partnerIdList
         if (partnerIds.isNotEmpty() && partners.none { it in partnerIds }) return false
         // 与日历筛选同一口径：类型里含「自慰」
-        if (onlySolo && "自慰" !in row.typeList) return false
+        if (onlySolo && row.typeList.none { it.withoutDeletedMarker() == "自慰" }) return false
         return true
     }
 }
@@ -90,6 +92,17 @@ class HistoryViewModel @Inject constructor(
             .map { (month, days) -> HistoryMonth(month, days) }
     }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    init {
+        // 与日历一致：伴侣被删/归档后自动从筛选里剔除
+        viewModelScope.launch {
+            partners.collect { list ->
+                val activeIds = list.mapTo(HashSet()) { it.id }
+                val kept = filter.partnerIds.filterTo(LinkedHashSet()) { it in activeIds }
+                if (kept.size != filter.partnerIds.size) applyFilter(filter.copy(partnerIds = kept))
+            }
+        }
+    }
 
     val photos = photoRepository.observeAlbum()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

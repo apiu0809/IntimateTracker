@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.ZoneId
 import javax.inject.Inject
@@ -62,6 +63,16 @@ class StatisticsViewModel @Inject constructor(
 
     val partners: StateFlow<List<PartnerEntity>> = partnerRepository.observeActive()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    init {
+        // 选中的伴侣被删/归档后自动回到「全部伴侣」，避免标签显示全部、实际仍在按单人过滤
+        viewModelScope.launch {
+            partners.collect { list ->
+                val selected = partnerId ?: return@collect
+                if (list.none { it.id == selected }) selectPartner(null)
+            }
+        }
+    }
 
     val data: StateFlow<StatsData> = query
         .flatMapLatest { q ->

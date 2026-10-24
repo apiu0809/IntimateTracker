@@ -25,5 +25,16 @@ object Migrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2)
+    /**
+     * v3：`sex_type` / `location` 新增 `notes`，用于字典管理里的「说明」。
+     * 姿势与情趣用品本来就有 `notes`，四类字典自此字段对齐。
+     */
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE sex_type ADD COLUMN notes TEXT")
+            db.execSQL("ALTER TABLE location ADD COLUMN notes TEXT")
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
 }

@@ -21,8 +21,8 @@ android {
         applicationId = "com.mysecret.intimatetracker"
         minSdk = 26
         targetSdk = 36
-        versionCode = 51
-        versionName = "1.5.9"
+        versionCode = 52
+        versionName = "1.6.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -35,6 +35,7 @@ android {
     buildFeatures {
         compose = true
     }
+
 
     signingConfigs {
         if (keystoreProps.getProperty("storeFile") != null) {
@@ -123,6 +124,21 @@ val changelogAssetsDir = layout.buildDirectory.dir("generated/changelog").get().
 
 android {
     sourceSets.getByName("main").assets.srcDir(changelogAssetsDir)
+    // Room 迁移测试（MigrationTestHelper）需要从导出的 schema 读取历史版本 DDL
+    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
+}
+
+// room-testing 2.8.5 解析 schema JSON 需要 kotlinx-serialization 1.8.1 的
+// GeneratedSerializer.typeParametersSerializers()；但 lifecycle 2.11.0 的 BOM 把
+// serialization 钉在 1.7.3，测试进程里会抛 AbstractMethodError。
+// 统一抬到 1.8.1（向后兼容），让 MigrationTestHelper 能读到 schema。
+configurations.configureEach {
+    resolutionStrategy.force(
+        "org.jetbrains.kotlinx:kotlinx-serialization-core:1.8.1",
+        "org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.8.1",
+        "org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1",
+        "org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.8.1",
+    )
 }
 
 tasks.named("preBuild") { dependsOn(copyChangelog) }

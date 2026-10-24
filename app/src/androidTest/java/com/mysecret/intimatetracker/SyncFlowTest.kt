@@ -5,6 +5,9 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.mysecret.intimatetracker.data.db.AppDatabase
 import com.mysecret.intimatetracker.data.db.RecordEntity
+import com.mysecret.intimatetracker.data.db.RecordSexTypeCrossRef
+import com.mysecret.intimatetracker.data.db.SexTypeEntity
+import com.mysecret.intimatetracker.data.db.TombstoneEntity
 import com.mysecret.intimatetracker.data.db.Seeder
 import com.mysecret.intimatetracker.data.sync.BackupArchive
 import com.mysecret.intimatetracker.data.sync.SyncManager
@@ -15,6 +18,7 @@ import com.mysecret.intimatetracker.data.sync.WebDavConfig
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -90,6 +94,41 @@ class SyncFlowTest {
         val result = sync.sync(config)
 
         assertTrue(result is SyncResult.Success)
+    }
+
+    @Test
+    fun purged_dictionary_item_is_not_resurrected_by_remote_archive(): Unit = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val now = System.currentTimeMillis()
+        val type = SexTypeEntity(id = "st_tomb", name = "口交", createdAt = now - 10_000, updatedAt = now - 10_000)
+
+        // 本地：类型 + 记录关联，然后彻底删除（物理删 + 墓碑）
+        db.sexTypeDao().upsert(type)
+        db.recordDao().upsert(record("r1", now - 9_000))
+        db.recordDao().linkSexType(RecordSexTypeCrossRef("r1", "st_tomb"))
+        db.sexTypeDao().hardDelete("st_tomb")
+        db.tombstoneDao().put(TombstoneEntity("sex_type", "st_tomb", now))
+
+        // 远端包：删除前的状态，仍含该类型与关联
+        val remoteName = "sync-remote-tomb-test.db"
+        context.deleteDatabase(remoteName)
+        val remote = Room.databaseBuilder(context, AppDatabase::class.java, remoteName).build()
+        remote.sexTypeDao().upsert(type)
+        remote.recordDao().upsert(record("r1", now - 9_000))
+        remote.recordDao().linkSexType(RecordSexTypeCrossRef("r1", "st_tomb"))
+        remote.close()
+
+        val archive = File(context.cacheDir, "remote-tomb.zip")
+        BackupArchive.pack(context.getDatabasePath(remoteName), File(context.filesDir, "images"), "{}", archive)
+        dav.dirs += "IntimateTracker"
+        dav.files["IntimateTracker/backup-20260101-000000.zip"] = archive.readBytes()
+        dav.etags["IntimateTracker/backup-20260101-000000.zip"] = "\"remote-etag\""
+
+        sync.sync(config)
+
+        assertNull("本地彻底删除的项不应被远端旧包带回来", db.sexTypeDao().byIdIncludingDeleted("st_tomb"))
+        assertTrue(db.tombstoneDao().all().any { it.tableName == "sex_type" && it.rowId == "st_tomb" })
+        context.deleteDatabase(remoteName)
     }
 
     @Test

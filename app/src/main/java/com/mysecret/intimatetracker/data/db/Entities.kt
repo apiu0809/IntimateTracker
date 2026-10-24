@@ -35,7 +35,10 @@ data class SexTypeEntity(
     @PrimaryKey val id: String,
     val name: String,
     val emoji: String = "❤️",
+    val notes: String? = null,
     @ColumnInfo(name = "is_builtin") val isBuiltin: Boolean = false,
+    // 「隐藏」功能已移除：is_hidden 列保留只为兼容已安装的 v3 库（删列要迁移，
+    // 且会让旧版本 App 打不开新版本同步包），不再参与任何界面 / 业务逻辑。
     @ColumnInfo(name = "is_hidden") val isHidden: Boolean = false,
     @ColumnInfo(name = "sort_order") val sortOrder: Int = 0,
     @ColumnInfo(name = "created_at") val createdAt: Long,
@@ -74,6 +77,7 @@ data class ToyEntity(
 data class LocationEntity(
     @PrimaryKey val id: String,
     val name: String,
+    val notes: String? = null,
     @ColumnInfo(name = "is_builtin") val isBuiltin: Boolean = false,
     @ColumnInfo(name = "is_hidden") val isHidden: Boolean = false,
     @ColumnInfo(name = "sort_order") val sortOrder: Int = 0,

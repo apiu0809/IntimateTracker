@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 private const val NOT_DELETED = "deleted_at IS NULL"
@@ -16,10 +17,23 @@ interface PartnerDao {
     @Query("SELECT * FROM partner WHERE deleted_at IS NULL AND is_archived = 1 ORDER BY sort_order, name")
     fun observeArchived(): Flow<List<PartnerEntity>>
 
+    /** 已软删，管理页「已删除」区用来恢复。 */
+    @Query("SELECT * FROM partner WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC")
+    fun observeDeleted(): Flow<List<PartnerEntity>>
+
+    /** 含软删与归档，仅编辑记录时展示历史选项用。 */
+    @Query("SELECT * FROM partner ORDER BY sort_order, name")
+    fun observeAllHistory(): Flow<List<PartnerEntity>>
+
     @Query("SELECT * FROM partner WHERE id = :id AND deleted_at IS NULL")
     suspend fun find(id: String): PartnerEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    /**
+     * 必须是 @Upsert（冲突时 UPDATE），不能用 INSERT OR REPLACE：
+     * REPLACE 会先物理删掉旧行，触发 `record_partner_cross_ref` 的 ON DELETE CASCADE，
+     * 等于「改个名字就把该伴侣的历史记录关联全删了」。
+     */
+    @Upsert
     suspend fun upsert(partner: PartnerEntity)
 
     @Query("UPDATE partner SET deleted_at = :now, updated_at = :now WHERE id = :id")
@@ -37,6 +51,7 @@ interface PartnerDao {
     @Query("SELECT * FROM partner WHERE deleted_at IS NULL")
     suspend fun all(): List<PartnerEntity>
 
+
     @Query("SELECT * FROM partner")
     suspend fun allForSync(): List<PartnerEntity>
 
@@ -46,17 +61,29 @@ interface PartnerDao {
 
 @Dao
 interface SexTypeDao {
-    @Query("SELECT * FROM sex_type WHERE deleted_at IS NULL ORDER BY is_builtin DESC, sort_order, name")
+    @Query("SELECT * FROM sex_type WHERE deleted_at IS NULL ORDER BY sort_order, name")
     fun observeAll(): Flow<List<SexTypeEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(item: SexTypeEntity)
+    /** 含软删，仅编辑记录时展示历史选项用。 */
+    @Query("SELECT * FROM sex_type ORDER BY sort_order, name")
+    fun observeAllIncludingDeleted(): Flow<List<SexTypeEntity>>
 
-    @Query("UPDATE sex_type SET is_hidden = :hidden, updated_at = :now WHERE id = :id")
-    suspend fun setHidden(id: String, hidden: Boolean, now: Long)
+    /** @Upsert 而非 REPLACE：REPLACE 会先删旧行，级联清掉记录关联。 */
+    @Upsert
+    suspend fun upsert(item: SexTypeEntity)
 
     @Query("UPDATE sex_type SET deleted_at = :now, updated_at = :now WHERE id = :id")
     suspend fun softDelete(id: String, now: Long)
+
+    /** 恢复：清软删并把序号追加到末尾，保证恢复后的位置可预期。 */
+    @Query("UPDATE sex_type SET deleted_at = NULL, sort_order = :order, updated_at = :now WHERE id = :id")
+    suspend fun restore(id: String, order: Int, now: Long)
+
+    @Query("SELECT * FROM sex_type WHERE id = :id")
+    suspend fun byIdIncludingDeleted(id: String): SexTypeEntity?
+
+    @Query("DELETE FROM sex_type WHERE id = :id")
+    suspend fun hardDelete(id: String)
 
     @Query("SELECT COUNT(*) FROM sex_type WHERE deleted_at IS NULL")
     suspend fun count(): Int
@@ -79,17 +106,29 @@ interface SexTypeDao {
 
 @Dao
 interface PositionDao {
-    @Query("SELECT * FROM position WHERE deleted_at IS NULL ORDER BY is_builtin DESC, sort_order, name")
+    @Query("SELECT * FROM position WHERE deleted_at IS NULL ORDER BY sort_order, name")
     fun observeAll(): Flow<List<PositionEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(item: PositionEntity)
+    /** 含软删，仅编辑记录时展示历史选项用。 */
+    @Query("SELECT * FROM position ORDER BY sort_order, name")
+    fun observeAllIncludingDeleted(): Flow<List<PositionEntity>>
 
-    @Query("UPDATE position SET is_hidden = :hidden, updated_at = :now WHERE id = :id")
-    suspend fun setHidden(id: String, hidden: Boolean, now: Long)
+    /** @Upsert 而非 REPLACE：REPLACE 会先删旧行，级联清掉记录关联。 */
+    @Upsert
+    suspend fun upsert(item: PositionEntity)
 
     @Query("UPDATE position SET deleted_at = :now, updated_at = :now WHERE id = :id")
     suspend fun softDelete(id: String, now: Long)
+
+    /** 恢复：清软删并把序号追加到末尾，保证恢复后的位置可预期。 */
+    @Query("UPDATE position SET deleted_at = NULL, sort_order = :order, updated_at = :now WHERE id = :id")
+    suspend fun restore(id: String, order: Int, now: Long)
+
+    @Query("SELECT * FROM position WHERE id = :id")
+    suspend fun byIdIncludingDeleted(id: String): PositionEntity?
+
+    @Query("DELETE FROM position WHERE id = :id")
+    suspend fun hardDelete(id: String)
 
     @Query("UPDATE position SET deleted_at = :now, updated_at = :now WHERE is_builtin = 1 AND deleted_at IS NULL")
     suspend fun softDeleteAllBuiltin(now: Long)
@@ -115,17 +154,29 @@ interface PositionDao {
 
 @Dao
 interface ToyDao {
-    @Query("SELECT * FROM toy WHERE deleted_at IS NULL ORDER BY is_builtin DESC, sort_order, name")
+    @Query("SELECT * FROM toy WHERE deleted_at IS NULL ORDER BY sort_order, name")
     fun observeAll(): Flow<List<ToyEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(item: ToyEntity)
+    /** 含软删，仅编辑记录时展示历史选项用。 */
+    @Query("SELECT * FROM toy ORDER BY sort_order, name")
+    fun observeAllIncludingDeleted(): Flow<List<ToyEntity>>
 
-    @Query("UPDATE toy SET is_hidden = :hidden, updated_at = :now WHERE id = :id")
-    suspend fun setHidden(id: String, hidden: Boolean, now: Long)
+    /** @Upsert 而非 REPLACE：REPLACE 会先删旧行，级联清掉记录关联。 */
+    @Upsert
+    suspend fun upsert(item: ToyEntity)
 
     @Query("UPDATE toy SET deleted_at = :now, updated_at = :now WHERE id = :id")
     suspend fun softDelete(id: String, now: Long)
+
+    /** 恢复：清软删并把序号追加到末尾，保证恢复后的位置可预期。 */
+    @Query("UPDATE toy SET deleted_at = NULL, sort_order = :order, updated_at = :now WHERE id = :id")
+    suspend fun restore(id: String, order: Int, now: Long)
+
+    @Query("SELECT * FROM toy WHERE id = :id")
+    suspend fun byIdIncludingDeleted(id: String): ToyEntity?
+
+    @Query("DELETE FROM toy WHERE id = :id")
+    suspend fun hardDelete(id: String)
 
     @Query("SELECT COUNT(*) FROM toy WHERE deleted_at IS NULL")
     suspend fun count(): Int
@@ -145,17 +196,29 @@ interface ToyDao {
 
 @Dao
 interface LocationDao {
-    @Query("SELECT * FROM location WHERE deleted_at IS NULL ORDER BY is_builtin DESC, sort_order, name")
+    @Query("SELECT * FROM location WHERE deleted_at IS NULL ORDER BY sort_order, name")
     fun observeAll(): Flow<List<LocationEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsert(item: LocationEntity)
+    /** 含软删，仅编辑记录时展示历史选项用。 */
+    @Query("SELECT * FROM location ORDER BY sort_order, name")
+    fun observeAllIncludingDeleted(): Flow<List<LocationEntity>>
 
-    @Query("UPDATE location SET is_hidden = :hidden, updated_at = :now WHERE id = :id")
-    suspend fun setHidden(id: String, hidden: Boolean, now: Long)
+    /** @Upsert 而非 REPLACE：REPLACE 会先删旧行，级联清掉记录关联。 */
+    @Upsert
+    suspend fun upsert(item: LocationEntity)
 
     @Query("UPDATE location SET deleted_at = :now, updated_at = :now WHERE id = :id")
     suspend fun softDelete(id: String, now: Long)
+
+    /** 恢复：清软删并把序号追加到末尾，保证恢复后的位置可预期。 */
+    @Query("UPDATE location SET deleted_at = NULL, sort_order = :order, updated_at = :now WHERE id = :id")
+    suspend fun restore(id: String, order: Int, now: Long)
+
+    @Query("SELECT * FROM location WHERE id = :id")
+    suspend fun byIdIncludingDeleted(id: String): LocationEntity?
+
+    @Query("DELETE FROM location WHERE id = :id")
+    suspend fun hardDelete(id: String)
 
     @Query("SELECT COUNT(*) FROM location WHERE deleted_at IS NULL")
     suspend fun count(): Int
@@ -184,7 +247,11 @@ interface RecordDao {
     @Query("SELECT * FROM record WHERE id = :id AND deleted_at IS NULL")
     suspend fun find(id: String): RecordEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    /**
+     * @Upsert 而非 REPLACE：REPLACE 删除旧记录行时会级联清空 photo 与 5 张交叉表，
+     * 表现就是「编辑一次记录，照片全没了」。
+     */
+    @Upsert
     suspend fun upsert(record: RecordEntity)
 
     @Query("SELECT MAX(timestamp) FROM record WHERE deleted_at IS NULL")
@@ -196,7 +263,7 @@ interface RecordDao {
     @Query("SELECT * FROM record WHERE id = :id")
     suspend fun findIncludingDeleted(id: String): RecordEntity?
 
-    /** 本地数据版本：所有可同步表的最大 updated_at，用于判断本地是否有新改动。 */
+    /** 本地数据版本：所有可同步表的最大 updated_at（含墓碑时间），用于判断本地是否有新改动。 */
     @Query(
         "SELECT MAX(v) FROM (" +
             "SELECT MAX(updated_at) AS v FROM record " +
@@ -205,7 +272,8 @@ interface RecordDao {
             "UNION ALL SELECT MAX(updated_at) FROM position " +
             "UNION ALL SELECT MAX(updated_at) FROM toy " +
             "UNION ALL SELECT MAX(updated_at) FROM location " +
-            "UNION ALL SELECT MAX(updated_at) FROM photo)"
+            "UNION ALL SELECT MAX(updated_at) FROM photo " +
+            "UNION ALL SELECT MAX(deleted_at) FROM tombstone)"
     )
     suspend fun dataVersion(): Long?
 
@@ -242,13 +310,13 @@ interface RecordDao {
     @Query(
         """
         SELECT r.*,
-          (SELECT GROUP_CONCAT(s.name, '|') FROM record_sex_type_cross_ref x JOIN sex_type s ON s.id = x.sex_type_id WHERE x.record_id = r.id AND s.deleted_at IS NULL) AS typeNames,
-          (SELECT GROUP_CONCAT(s.emoji, '|') FROM record_sex_type_cross_ref x JOIN sex_type s ON s.id = x.sex_type_id WHERE x.record_id = r.id AND s.deleted_at IS NULL) AS typeEmojis,
-          (SELECT GROUP_CONCAT(l.name, '|') FROM record_location_cross_ref x JOIN location l ON l.id = x.location_id WHERE x.record_id = r.id AND l.deleted_at IS NULL) AS locationNames,
-          (SELECT GROUP_CONCAT(p.name, '|') FROM record_position_cross_ref x JOIN position p ON p.id = x.position_id WHERE x.record_id = r.id AND p.deleted_at IS NULL) AS positionNames,
+          (SELECT GROUP_CONCAT(CASE WHEN s.deleted_at IS NULL THEN s.name ELSE s.name || '（已删除）' END, '|') FROM record_sex_type_cross_ref x JOIN sex_type s ON s.id = x.sex_type_id WHERE x.record_id = r.id) AS typeNames,
+          (SELECT GROUP_CONCAT(s.emoji, '|') FROM record_sex_type_cross_ref x JOIN sex_type s ON s.id = x.sex_type_id WHERE x.record_id = r.id) AS typeEmojis,
+          (SELECT GROUP_CONCAT(CASE WHEN l.deleted_at IS NULL THEN l.name ELSE l.name || '（已删除）' END, '|') FROM record_location_cross_ref x JOIN location l ON l.id = x.location_id WHERE x.record_id = r.id) AS locationNames,
+          (SELECT GROUP_CONCAT(CASE WHEN p.deleted_at IS NULL THEN p.name ELSE p.name || '（已删除）' END, '|') FROM record_position_cross_ref x JOIN position p ON p.id = x.position_id WHERE x.record_id = r.id) AS positionNames,
           (SELECT COUNT(*) FROM record_toy_cross_ref t WHERE t.record_id = r.id) AS toyCount,
-          (SELECT GROUP_CONCAT(p.name, '|') FROM record_partner_cross_ref x JOIN partner p ON p.id = x.partner_id WHERE x.record_id = r.id AND p.deleted_at IS NULL) AS partnerNames,
-          (SELECT p.avatar_path FROM record_partner_cross_ref x JOIN partner p ON p.id = x.partner_id WHERE x.record_id = r.id AND p.deleted_at IS NULL ORDER BY p.sort_order LIMIT 1) AS partnerAvatarPath,
+          (SELECT GROUP_CONCAT(CASE WHEN p.deleted_at IS NULL THEN p.name ELSE p.name || '（已删除）' END, '|') FROM record_partner_cross_ref x JOIN partner p ON p.id = x.partner_id WHERE x.record_id = r.id) AS partnerNames,
+          (SELECT p.avatar_path FROM record_partner_cross_ref x JOIN partner p ON p.id = x.partner_id WHERE x.record_id = r.id ORDER BY p.sort_order LIMIT 1) AS partnerAvatarPath,
           (SELECT GROUP_CONCAT(p.partner_id, '|') FROM record_partner_cross_ref p WHERE p.record_id = r.id) AS partnerIds
         FROM record r
         WHERE r.deleted_at IS NULL AND r.timestamp BETWEEN :from AND :to
@@ -261,10 +329,10 @@ interface RecordDao {
         """
         SELECT r.id AS recordId, r.timestamp AS timestamp, r.icon AS icon,
           r.satisfaction AS satisfaction, r.protection_used AS protection,
-          (SELECT GROUP_CONCAT(s.name, '|') FROM record_sex_type_cross_ref x JOIN sex_type s ON s.id = x.sex_type_id WHERE x.record_id = r.id AND s.deleted_at IS NULL) AS typeNames,
+          (SELECT GROUP_CONCAT(CASE WHEN s.deleted_at IS NULL THEN s.name ELSE s.name || '（已删除）' END, '|') FROM record_sex_type_cross_ref x JOIN sex_type s ON s.id = x.sex_type_id WHERE x.record_id = r.id) AS typeNames,
           (SELECT COUNT(*) FROM record_toy_cross_ref t WHERE t.record_id = r.id) AS toyCount,
-          (SELECT GROUP_CONCAT(p.name, '|') FROM record_partner_cross_ref x JOIN partner p ON p.id = x.partner_id WHERE x.record_id = r.id AND p.deleted_at IS NULL) AS partnerNames,
-          (SELECT p.avatar_path FROM record_partner_cross_ref x JOIN partner p ON p.id = x.partner_id WHERE x.record_id = r.id AND p.deleted_at IS NULL ORDER BY p.sort_order LIMIT 1) AS partnerAvatarPath,
+          (SELECT GROUP_CONCAT(CASE WHEN p.deleted_at IS NULL THEN p.name ELSE p.name || '（已删除）' END, '|') FROM record_partner_cross_ref x JOIN partner p ON p.id = x.partner_id WHERE x.record_id = r.id) AS partnerNames,
+          (SELECT p.avatar_path FROM record_partner_cross_ref x JOIN partner p ON p.id = x.partner_id WHERE x.record_id = r.id ORDER BY p.sort_order LIMIT 1) AS partnerAvatarPath,
           (SELECT GROUP_CONCAT(p.partner_id, '|') FROM record_partner_cross_ref p WHERE p.record_id = r.id) AS partnerIds
         FROM record r
         WHERE r.deleted_at IS NULL AND r.timestamp BETWEEN :from AND :to
@@ -359,6 +427,15 @@ data class CalendarEntry(
             protection = protection,
             satisfaction = satisfaction,
         )
+}
+
+@Dao
+interface TombstoneDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun put(tombstone: TombstoneEntity)
+
+    @Query("SELECT * FROM tombstone")
+    suspend fun all(): List<TombstoneEntity>
 }
 
 @Dao

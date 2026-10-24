@@ -15,6 +15,23 @@
     <string name="action_delete">删除</string>
     <string name="action_add">新增</string>
     <string name="action_close">关闭</string>
+    <string name="action_restore">恢复</string>
+    <string name="deleted_section">已删除（%1$d）</string>
+    <string name="duplicate_title">已存在同名项</string>
+    <string name="duplicate_dict_message">已有「%1$s」，是否改为编辑它？</string>
+    <string name="duplicate_partner_message">已有同名伴侣「%1$s」，仍要新建吗？</string>
+    <string name="duplicate_partner_message_edit">已有同名伴侣「%1$s」，仍然保存吗？</string>
+    <string name="duplicate_create_anyway">仍要新建</string>
+    <string name="duplicate_save_anyway">仍然保存</string>
+    <string name="duplicate_edit_existing">去编辑它</string>
+    <string name="duplicate_restore_existing">恢复它</string>
+    <string name="duplicate_dict_message_deleted">已删除的「%1$s」仍占用这个名称，是否恢复它？</string>
+    <string name="duplicate_partner_message_deleted">已删除的伴侣「%1$s」仍占用这个名称，是否恢复它？</string>
+    <string name="action_purge">彻底删除</string>
+    <string name="purge_confirm_dict">彻底删除「%1$s」？
+此操作不可恢复，已有记录里的这个标签也会被移除。</string>
+    <string name="purge_confirm_partner">彻底删除伴侣「%1$s」？
+此操作不可恢复，历史记录与该伴侣的关联也会被移除。</string>
     <string name="action_edit">编辑</string>
 
     <!-- 日历 -->
@@ -73,15 +90,18 @@
     <string name="dict_position">姿势</string>
     <string name="dict_toy">情趣用品</string>
     <string name="dict_location">地点</string>
-    <string name="dict_yours">你的%1$s</string>
-    <string name="dict_yours_sex_type">你的类型</string>
-    <string name="dict_yours_location">你的地点</string>
-    <string name="dict_yours_position">你的姿势</string>
-    <string name="dict_yours_toy">你的情趣用品</string>
-    <string name="dict_builtin">内置</string>
-    <string name="dict_hint">点一下即可从记录表单中隐藏，不会删除任何数据。</string>
-    <string name="dict_reorder_tip">长按并拖动可调整顺序</string>
+    <string name="dict_add_position">新增姿势</string>
+    <string name="dict_edit_position">编辑姿势</string>
+    <string name="dict_edit_location">编辑地点</string>
+    <string name="dict_edit_sex_type">编辑性爱类型</string>
+    <string name="dict_edit_toy">编辑情趣用品</string>
+    <string name="dict_add_location">新增地点</string>
+    <string name="dict_add_sex_type">新增性爱类型</string>
+    <string name="dict_add_toy">新增情趣用品</string>
+    <string name="dict_note">备注</string>
+    <string name="dict_drag_handle">拖动排序</string>
     <string name="dict_empty">还没有内容</string>
+    <string name="dict_empty_active">在用项都已删除，可从下方「已删除」里恢复</string>
     <string name="dict_name">名称</string>
     <string name="dict_intensity">强度</string>
     <string name="dict_delete_confirm">确定删除「%1$s」？</string>
@@ -124,6 +144,7 @@
     <string name="record_notes">备注</string>
     <string name="record_notes_hint">想记下什么…</string>
     <string name="record_save_template">保存为模板</string>
+    <string name="record_save_failed">保存失败</string>
     <string name="record_initiator">主动方</string>
     <string name="record_solo">无 / 单人</string>
     <string name="record_added">已保存</string>

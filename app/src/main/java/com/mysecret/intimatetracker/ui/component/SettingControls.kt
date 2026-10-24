@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -218,6 +219,7 @@ fun SettingSegmented(
             Box(
                 modifier = Modifier
                     .weight(1f)
+                    .clip(RoundedCornerShape(50))
                     .background(background, RoundedCornerShape(50))
                     .clickable { onSelect(index) }
                     .padding(vertical = 10.dp),

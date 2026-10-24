@@ -2,6 +2,7 @@ package com.mysecret.intimatetracker.data.repo
 
 import com.mysecret.intimatetracker.data.db.AppDatabase
 import com.mysecret.intimatetracker.data.db.CountItem
+import com.mysecret.intimatetracker.domain.withDeletedMarker
 import kotlinx.coroutines.flow.first
 import java.util.Locale
 import javax.inject.Inject
@@ -40,6 +41,7 @@ data class StatsSnapshot(
     val partnerActivities: List<NamedCount> = emptyList(),
 )
 
+
 @Singleton
 class StatsRepository @Inject constructor(
     private val db: AppDatabase,
@@ -57,10 +59,11 @@ class StatsRepository @Inject constructor(
         val ratedCount = dao.protectionRisked(from, to, partnerId)
         val protectedCount = dao.protectionUsed(from, to, partnerId)
 
-        val typeNames = db.sexTypeDao().observeAll().first().associate { it.id to it.name }
-        val locationNames = db.locationDao().observeAll().first().associate { it.id to it.name }
-        val positionNames = db.positionDao().observeAll().first().associate { it.id to it.name }
-        val toyNames = db.toyDao().observeAll().first().associate { it.id to it.name }
+        // 统计走「历史真相」：已删除的字典项仍参与排行，名字后加「（已删除）」
+        val typeNames = db.sexTypeDao().all().associate { it.id to it.name.withDeletedMarker(it.deletedAt != null) }
+        val locationNames = db.locationDao().all().associate { it.id to it.name.withDeletedMarker(it.deletedAt != null) }
+        val positionNames = db.positionDao().all().associate { it.id to it.name.withDeletedMarker(it.deletedAt != null) }
+        val toyNames = db.toyDao().all().associate { it.id to it.name.withDeletedMarker(it.deletedAt != null) }
         val partnerNames = db.partnerDao().all().associate { it.id to it.name }
 
         val withLocation = dao.recordsWithLocation(from, to, partnerId)
@@ -117,6 +120,7 @@ class StatsRepository @Inject constructor(
                 percent = if (denominator <= 0) 0.0 else row.count * 100.0 / denominator,
             )
         }
+
 
     private fun Int?.orZero(): Int = this ?: 0
 

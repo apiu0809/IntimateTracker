@@ -56,8 +56,17 @@ object Seeder {
     /** 幂等：仅在对应表为空时写入内置数据。 */
     suspend fun seed(db: AppDatabase, now: Long = System.currentTimeMillis()) {
         cleanupLegacyBuiltins(db, now)
-        if (db.sexTypeDao().countBuiltin() == 0) {
-            SeedData.sexTypes.forEach { seed ->
+
+        // 「彻底删除」写下的墓碑是用户「不要再回来」的最终信号：即使整表被删空也不重种，
+        // 否则重启后内置项复活，而墓碑又让同步永久忽略它，多端状态会彻底分叉。
+        val purged = db.tombstoneDao().all()
+            .groupBy({ it.tableName }, { it.rowId })
+            .mapValues { (_, ids) -> ids.toHashSet() }
+        fun isPurged(table: String, id: String): Boolean = id in purged[table].orEmpty()
+
+        // 用「含软删的全表为空」判断，保证用户删掉的内置项不会被再种回来
+        if (db.sexTypeDao().all().isEmpty()) {
+            SeedData.sexTypes.filterNot { isPurged("sex_type", it.id) }.forEach { seed ->
                 db.sexTypeDao().upsert(
                     SexTypeEntity(
                         id = seed.id,
@@ -71,23 +80,25 @@ object Seeder {
                 )
             }
         }
-        // 幂等补齐后加的内置类型：只插缺失 id，不覆盖用户的隐藏/排序
+        // 幂等补齐后加的内置类型：只插缺失且没被彻底删除的 id，不覆盖用户的排序
         val existingIds = db.sexTypeDao().all().map { it.id }.toSet()
-        SeedData.sexTypes.filter { it.id !in existingIds }.forEach { seed ->
-            db.sexTypeDao().upsert(
-                SexTypeEntity(
-                    id = seed.id,
-                    name = seed.name,
-                    emoji = seed.emoji,
-                    isBuiltin = true,
-                    sortOrder = seed.sort,
-                    createdAt = now,
-                    updatedAt = now,
-                ),
-            )
-        }
-        if (db.locationDao().countBuiltin() == 0) {
-            SeedData.locations.forEach { seed ->
+        SeedData.sexTypes
+            .filter { it.id !in existingIds && !isPurged("sex_type", it.id) }
+            .forEach { seed ->
+                db.sexTypeDao().upsert(
+                    SexTypeEntity(
+                        id = seed.id,
+                        name = seed.name,
+                        emoji = seed.emoji,
+                        isBuiltin = true,
+                        sortOrder = seed.sort,
+                        createdAt = now,
+                        updatedAt = now,
+                    ),
+                )
+            }
+        if (db.locationDao().all().isEmpty()) {
+            SeedData.locations.filterNot { isPurged("location", it.id) }.forEach { seed ->
                 db.locationDao().upsert(
                     LocationEntity(
                         id = seed.id,
@@ -100,8 +111,8 @@ object Seeder {
                 )
             }
         }
-        if (db.positionDao().countBuiltin() == 0) {
-            SeedData.positions.forEach { seed ->
+        if (db.positionDao().all().isEmpty()) {
+            SeedData.positions.filterNot { isPurged("position", it.id) }.forEach { seed ->
                 db.positionDao().upsert(
                     PositionEntity(
                         id = seed.id,

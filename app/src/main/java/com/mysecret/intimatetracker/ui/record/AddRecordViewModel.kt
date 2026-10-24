@@ -17,6 +17,7 @@ import com.mysecret.intimatetracker.data.repo.SettingsRepository
 import com.mysecret.intimatetracker.data.repo.RecordDraft
 import com.mysecret.intimatetracker.data.repo.RecordRepository
 import com.mysecret.intimatetracker.domain.RecordIcons
+import com.mysecret.intimatetracker.domain.withoutDeletedMarker
 import com.mysecret.intimatetracker.domain.model.Initiator
 import com.mysecret.intimatetracker.domain.model.Protection
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -72,6 +73,14 @@ class AddRecordViewModel @Inject constructor(
     var saving by mutableStateOf(false)
         private set
 
+    /** 保存失败时的提示文案；非空即弹窗，避免异常直接把进程带崩。 */
+    var saveError by mutableStateOf<String?>(null)
+        private set
+
+    fun dismissSaveError() {
+        saveError = null
+    }
+
     var pendingUris by mutableStateOf<List<Uri>>(emptyList())
         private set
 
@@ -104,23 +113,24 @@ class AddRecordViewModel @Inject constructor(
         }
     }
 
-    val partners = partnerRepository.observeActive()
+    // 编辑记录时按历史展示：含已删与已归档，界面只显示「当前可用 + 已被本记录选中」的项
+    val partners = partnerRepository.observeAllHistory()
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
             partnerRepository.cachedActive(),
         )
 
-    val sexTypes = dictionaryRepository.observe(DictionaryKind.SEX_TYPE)
+    val sexTypes = dictionaryRepository.observeIncludingDeleted(DictionaryKind.SEX_TYPE)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val positions = dictionaryRepository.observe(DictionaryKind.POSITION)
+    val positions = dictionaryRepository.observeIncludingDeleted(DictionaryKind.POSITION)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val toys = dictionaryRepository.observe(DictionaryKind.TOY)
+    val toys = dictionaryRepository.observeIncludingDeleted(DictionaryKind.TOY)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val locations = dictionaryRepository.observe(DictionaryKind.LOCATION)
+    val locations = dictionaryRepository.observeIncludingDeleted(DictionaryKind.LOCATION)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** 返回是否全部接收；超出的部分被丢弃，调用方据此提示。 */
@@ -160,7 +170,10 @@ class AddRecordViewModel @Inject constructor(
     /** 依据已选类型 / 星级推导图标，用户手动选过则保持原样。 */
     private fun autoIcon(next: RecordForm): RecordForm {
         if (iconManual) return next
-        val names = next.sexTypeIds.mapNotNull { id -> sexTypes.value.firstOrNull { it.id == id }?.name }
+        // 已删类型的名字带「（已删除）」后缀，映射图标前先去掉
+        val names = next.sexTypeIds.mapNotNull { id ->
+            sexTypes.value.firstOrNull { it.id == id }?.name?.withoutDeletedMarker()
+        }
         val derived = names.firstNotNullOfOrNull { RecordIcons.TYPE_ICONS[it] }
             ?: when (next.satisfaction) {
                 5 -> RecordIcons.SATISFACTION_FIVE
@@ -203,33 +216,39 @@ class AddRecordViewModel @Inject constructor(
         if (saving) return
         saving = true
         viewModelScope.launch {
-            val current = form
-            val savedId = records.save(
-                RecordDraft(
-                    id = recordId,
-                    timestamp = current.timestamp,
-                    icon = current.icon,
-                    durationMinutes = current.durationMinutes,
-                    satisfaction = current.satisfaction.takeIf { it > 0 },
-                    initiator = current.initiator,
-                    protection = current.protection,
-                    myOrgasmCount = current.myOrgasm,
-                    partnerOrgasmCount = current.partnerOrgasm,
-                    isSolo = current.partnerIds.isEmpty(),
-                    notes = current.notes,
-                    partnerIds = current.partnerIds.toList(),
-                    sexTypeIds = current.sexTypeIds.toList(),
-                    positionIds = current.positionIds.toList(),
-                    toyIds = current.toyIds.toList(),
-                    locationIds = current.locationIds.toList(),
-                ),
-            )
-            if (pendingUris.isNotEmpty()) {
-                photos.import(savedId, pendingUris)
-                pendingUris = emptyList()
+            try {
+                val current = form
+                val savedId = records.save(
+                    RecordDraft(
+                        id = recordId,
+                        timestamp = current.timestamp,
+                        icon = current.icon,
+                        durationMinutes = current.durationMinutes,
+                        satisfaction = current.satisfaction.takeIf { it > 0 },
+                        initiator = current.initiator,
+                        protection = current.protection,
+                        myOrgasmCount = current.myOrgasm,
+                        partnerOrgasmCount = current.partnerOrgasm,
+                        isSolo = current.partnerIds.isEmpty(),
+                        notes = current.notes,
+                        partnerIds = current.partnerIds.toList(),
+                        sexTypeIds = current.sexTypeIds.toList(),
+                        positionIds = current.positionIds.toList(),
+                        toyIds = current.toyIds.toList(),
+                        locationIds = current.locationIds.toList(),
+                    ),
+                )
+                if (pendingUris.isNotEmpty()) {
+                    // 记录已经落库：照片导入失败不回滚记录，也不提示「保存失败」（避免误导成重复保存）
+                    runCatching { photos.import(savedId, pendingUris) }
+                    pendingUris = emptyList()
+                }
+                onDone()
+            } catch (e: Exception) {
+                saveError = e.message ?: e.javaClass.simpleName
+            } finally {
+                saving = false
             }
-            saving = false
-            onDone()
         }
     }
 }

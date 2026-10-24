@@ -45,7 +45,8 @@ object RecordIcons {
     ): List<String> {
         val others = ArrayList<String>()
         customIcon?.takeIf { it.isNotBlank() }?.let { others += it }
-        typeNames.forEach { name -> TYPE_ICONS[name]?.let { if (it !in others) others += it } }
+        // 已删类型的名字带「（已删除）」后缀，图标映射按去掉后缀的名字匹配，历史记录仍然显示原图标
+        typeNames.forEach { raw -> TYPE_ICONS[raw.withoutDeletedMarker()]?.let { if (it !in others) others += it } }
         if (hasToy) others += TOY_ICON
         if (protection == Protection.YES) others += PROTECTION_ICON
 

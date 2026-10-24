@@ -45,6 +45,14 @@ class CalendarFilterTest {
     }
 
     @Test
+    fun `only solo filter ignores deleted marker`() {
+        val filter = CalendarFilter(onlySolo = true)
+
+        assertTrue("已删的「自慰」仍算自慰", filter.matches(entry(types = listOf("自慰（已删除）"))))
+        assertFalse(filter.matches(entry(types = listOf("口交（已删除）"))))
+    }
+
+    @Test
     fun `partner and solo filters are combined with or`() {
         val filter = CalendarFilter(partnerIds = setOf("p1"), onlySolo = true)
 

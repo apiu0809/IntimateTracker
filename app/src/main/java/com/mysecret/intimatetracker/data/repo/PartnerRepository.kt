@@ -1,7 +1,10 @@
 package com.mysecret.intimatetracker.data.repo
 
+import androidx.room.withTransaction
+import com.mysecret.intimatetracker.data.db.AppDatabase
 import com.mysecret.intimatetracker.data.db.PartnerDao
 import com.mysecret.intimatetracker.data.db.PartnerEntity
+import com.mysecret.intimatetracker.data.db.TombstoneEntity
 import com.mysecret.intimatetracker.data.sync.SyncTrigger
 import com.mysecret.intimatetracker.domain.model.Gender
 import com.mysecret.intimatetracker.domain.model.RelationshipType
@@ -14,6 +17,7 @@ import javax.inject.Singleton
 @Singleton
 class PartnerRepository @Inject constructor(
     private val dao: PartnerDao,
+    private val db: AppDatabase,
     private val syncScheduler: SyncTrigger,
 ) {
 
@@ -26,6 +30,79 @@ class PartnerRepository @Inject constructor(
     fun cachedActive(): List<PartnerEntity> = activeCache.value
 
     fun observeArchived(): Flow<List<PartnerEntity>> = dao.observeArchived()
+
+    /** 含软删与归档：仅「编辑记录」用来展示历史选项。 */
+    fun observeAllHistory(): Flow<List<PartnerEntity>> = dao.observeAllHistory()
+
+    /** 已软删，管理页「已删除」区用来恢复。 */
+    fun observeDeleted(): Flow<List<PartnerEntity>> = dao.observeDeleted()
+
+    /**
+     * 新增 / 改名前的重名检查：[excludeId] 用于编辑时排除自己。
+     * **已删除伴侣也算重名**（删除后重建同名会让历史记录割裂），命中已删项时由界面提示恢复。
+     */
+    suspend fun findByName(name: String, excludeId: String? = null): PartnerEntity? {
+        val target = name.trim()
+        if (target.isEmpty()) return null
+        val matches = dao.allForSync().filter {
+            it.id != excludeId && it.name.trim().equals(target, ignoreCase = true)
+        }
+        return matches.firstOrNull { it.deletedAt == null } ?: matches.firstOrNull()
+    }
+
+    /** 彻底删除：物理删行 + 写墓碑，避免被远端旧备份带回来。 */
+    suspend fun purge(id: String) {
+        val now = System.currentTimeMillis()
+        db.withTransaction {
+            dao.hardDelete(id)
+            db.tombstoneDao().put(TombstoneEntity(tableName = "partner", rowId = id, deletedAt = now))
+        }
+        syncScheduler.onLocalChange()
+    }
+
+    /**
+     * 恢复软删伴侣：清 `deleted_at` 并取消归档，
+     * 保证「恢复」之后它真的回到活跃列表，而不是悄悄留在「已归档」里。
+     */
+    suspend fun restore(id: String) {
+        val now = System.currentTimeMillis()
+        db.withTransaction {
+            val existing = dao.findIncludingDeleted(id) ?: return@withTransaction
+            dao.upsert(existing.copy(deletedAt = null, isArchived = false, updatedAt = now))
+        }
+        syncScheduler.onLocalChange()
+    }
+
+    /**
+     * 重名时「恢复它」：清软删 + 取消归档，同时把用户刚填的资料写回，
+     * 避免恢复出旧数据而把新输入（名字 / 性别 / 关系 / 备注 / 头像）静默丢掉。
+     */
+    suspend fun restoreAndUpdate(
+        id: String,
+        name: String,
+        gender: Gender,
+        relationship: RelationshipType,
+        notes: String?,
+        avatarPath: String?,
+    ) {
+        val now = System.currentTimeMillis()
+        db.withTransaction {
+            val existing = dao.findIncludingDeleted(id) ?: return@withTransaction
+            dao.upsert(
+                existing.copy(
+                    name = name.trim(),
+                    gender = gender,
+                    relationshipType = relationship,
+                    notes = notes?.trim()?.takeIf { it.isNotEmpty() },
+                    avatarPath = avatarPath ?: existing.avatarPath,
+                    isArchived = false,
+                    deletedAt = null,
+                    updatedAt = now,
+                ),
+            )
+        }
+        syncScheduler.onLocalChange()
+    }
 
     suspend fun find(id: String): PartnerEntity? = dao.find(id)
 

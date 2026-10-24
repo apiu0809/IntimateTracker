@@ -71,6 +71,15 @@ class RecordRepository @Inject constructor(
             val now = System.currentTimeMillis()
             val existing = draft.id?.takeIf { it.isNotBlank() }?.let { dao.find(it) }
             val id = existing?.id ?: UUID.randomUUID().toString()
+
+            // 表单可能开着的时候，别处（彻底删除 / 后台同步拉到的墓碑）把某项物理删掉了：
+            // 这里按「本地仍存在的行」过滤，否则写交叉表会撞外键，整个保存事务失败。
+            val partnerIds = draft.partnerIds.filter { db.partnerDao().findIncludingDeleted(it) != null }
+            val sexTypeIds = draft.sexTypeIds.filter { db.sexTypeDao().byIdIncludingDeleted(it) != null }
+            val positionIds = draft.positionIds.filter { db.positionDao().byIdIncludingDeleted(it) != null }
+            val toyIds = draft.toyIds.filter { db.toyDao().byIdIncludingDeleted(it) != null }
+            val locationIds = draft.locationIds.filter { db.locationDao().byIdIncludingDeleted(it) != null }
+
             dao.upsert(
                 RecordEntity(
                     id = id,
@@ -82,7 +91,7 @@ class RecordRepository @Inject constructor(
                     protectionUsed = draft.protection,
                     myOrgasmCount = draft.myOrgasmCount,
                     partnerOrgasmCount = draft.partnerOrgasmCount,
-                    isSolo = draft.isSolo || draft.partnerIds.isEmpty(),
+                    isSolo = draft.isSolo || partnerIds.isEmpty(),
                     notes = draft.notes?.trim()?.takeIf { it.isNotEmpty() },
                     createdAt = existing?.createdAt ?: now,
                     updatedAt = now,
@@ -93,11 +102,11 @@ class RecordRepository @Inject constructor(
             dao.clearPositions(id)
             dao.clearToys(id)
             dao.clearLocations(id)
-            draft.partnerIds.forEach { dao.linkPartner(RecordPartnerCrossRef(recordId = id, partnerId = it)) }
-            draft.sexTypeIds.forEach { dao.linkSexType(RecordSexTypeCrossRef(recordId = id, sexTypeId = it)) }
-            draft.positionIds.forEach { dao.linkPosition(RecordPositionCrossRef(recordId = id, positionId = it)) }
-            draft.toyIds.forEach { dao.linkToy(RecordToyCrossRef(recordId = id, toyId = it)) }
-            draft.locationIds.forEach { dao.linkLocation(RecordLocationCrossRef(recordId = id, locationId = it)) }
+            partnerIds.forEach { dao.linkPartner(RecordPartnerCrossRef(recordId = id, partnerId = it)) }
+            sexTypeIds.forEach { dao.linkSexType(RecordSexTypeCrossRef(recordId = id, sexTypeId = it)) }
+            positionIds.forEach { dao.linkPosition(RecordPositionCrossRef(recordId = id, positionId = it)) }
+            toyIds.forEach { dao.linkToy(RecordToyCrossRef(recordId = id, toyId = it)) }
+            locationIds.forEach { dao.linkLocation(RecordLocationCrossRef(recordId = id, locationId = it)) }
             id
         }
         syncScheduler.onLocalChange()
