@@ -1,13 +1,13 @@
 # TASK_STATE — Intimate Tracker
 
-> 快照时间：2026-10-25 05:05（Asia/Shanghai）
+> 快照时间：2026-10-25 05:18（Asia/Shanghai）
 > 用途：上下文告急时的交接文件；恢复工作请先读本文件，再读 `prd-v1.1.md`。
 
 ## 1. 任务目标
 
 按 `prd-v1.1.md` 实现 Android App「亲密记录 / Intimate Tracker」（Kotlin + Compose + Room + Hilt）。
 4 个 Sprint 均已于 2026-10-22 交付：**S1 骨架+数据层+字典/伴侣 → S2 记录表单+日历+历史 → S3 统计 9 页签 → S4 同步 v2+应用锁+导出**；
-当前版本 **v1.8.0**（versionCode 54，数据库 v4），2026-10-25 发布（tag `v1.8.0`）：60 项 JVM 单测全绿；仪器测试沿用 v1.7.0 的 82 项基线（本次改动集中在 UI 层，未新增仪器用例）。v1.8.0 的三件事见 §2.10（主题引擎）、§2.11–2.12（节奏卡圆环与 1:1 版面）、§2.13（壁纸取色修复）。上一版 v1.7.0（versionCode 53）同日发布。
+当前版本 **v1.8.1**（versionCode 55，数据库 v4），2026-10-25 发布（tag `v1.8.1`）：修掉字典拖动时的直角投影（§2.14），只动 UI 层；60 项 JVM 单测全绿，仪器测试沿用 v1.7.0 的 82 项基线（未新增用例）。上一版 v1.8.0（versionCode 54）同日发布，三件事见 §2.10（主题引擎）、§2.11–2.12（节奏卡圆环与 1:1 版面）、§2.13（壁纸取色修复）。
 
 已确认的四项产品决策：
 1. 范围裁剪：不做账号体系与增值模块，仅 WebDAV 文件同步
@@ -203,6 +203,16 @@ S4 已交付：WebDAV v2 同步（客户端/合并/设置页/测试）、应用�
 - 验证：真机实测 —— 深色 `#181113` / 浅色 `#FEF8F9` 均带壁纸的粉色；「恢复默认」回到薄荷（`#F3FCF9`），再点「跟随壁纸」回到粉色（`#FEF8F9`）；启动日志显示解析在首帧与 `ON_RESUME` 各跑一次
 - 限制：MIUI 的换壁纸入口没有可用的 launcher activity，`am start` 打不开（`ACTION_CHANGE_WALLPAPER` / `SET_WALLPAPER` 都无法解析），所以「换完壁纸立即刷新」这一步只能靠 `ON_RESUME` 计数器的日志证据 + 代码路径确认，未做换壁纸的实拍对比
 - 证据：`evidence/wallpaper-01-dark.png`、`wallpaper-02-light.png`
+
+## 2.14 修复字典拖动时的「直角阴影」（2026-10-25）
+
+- 现象：四个字典管理页（姿势 / 地点 / 性爱类型 / 情趣用品）按住行尾手柄拖动时，浮起卡片背后多出一个**直角矩形**灰边，还会压暗下一张卡片的上沿
+- 根因：`DictionaryRow` 把 `shadowElevation` 加在**整行**的 `graphicsLayer` 上（行 = 卡片 + 左右各 16dp / 上下各 5dp 内边距），而 `graphicsLayer` 只在 `clip = true` 时才把 `shape` 写进 RenderNode 的 outline；`clip` 为 false 时投影用的是行边界的**直角矩形**。行内透明区域又透出这层投影，于是卡片四周露出一圈方角灰边
+- [x] 修法：`graphicsLayer` 只留 `translationY`；投影改用 `Modifier.shadow(12.dp, cardShape)` 加在**卡片自身**（`padding` 之后、`clip` 之前），`shadow` 默认 `clip = true`，投影随 18dp 圆角
+- 验证：真机 24129PN74C（1200×2670 / 520dpi）同一手势（`input motionevent` 按住第 7 行手柄下移 60px）新旧包对比 —— 旧包卡片外有直角灰框且压暗下一行，新包只有贴合圆角的柔和投影；拖动换位落点照常写库（自慰 ↔ 指交 对调后重新进页仍是新顺序），点击整行仍进编辑弹窗
+- 回归：`assembleDebug` / `assembleRelease` 通过，`testDebugUnitTest` 全绿（本次只动 UI 层，未新增仪器用例）
+- 证据：`evidence/dict-drag-shadow-before.png`、`dict-drag-shadow-after.png`、`dict-drag-shadow-compare.png`
+- 发布：随 **v1.8.1**（versionCode 55，tag `v1.8.1`）发布；`CHANGELOG.md` / `更新日志.md` 已同步
 
 ## 3. 剩余事项（2026-10-24 按代码核对后重写）
 

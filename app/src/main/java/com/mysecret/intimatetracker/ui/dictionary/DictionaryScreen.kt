@@ -55,6 +55,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -561,15 +562,21 @@ private fun DictionaryRow(
             .fillMaxWidth()
             .height(RowHeight)
             .zIndex(if (dragging) 1f else 0f)
-            .graphicsLayer {
-                translationY = shift
-                if (dragging) {
-                    shadowElevation = 12.dp.toPx()
-                    shape = cardShape
-                }
-            }
+            // 这一层只负责位移：阴影必须长在「卡片」上，不能长在整行上。
+            // 行比卡片大（左右各 16dp 内边距、上下各 5dp），拿整行当阴影轮廓时
+            // 投影是行边界的直角矩形，会在卡片四周露出一圈方角的灰边。
+            .graphicsLayer { translationY = shift }
             .padding(horizontal = 16.dp, vertical = 5.dp)
             .pressScale(interactionSource, pressedScale = if (dragging) 1f else 0.98f)
+            .then(
+                if (dragging) {
+                    // shadow() 默认 clip = true，圆角形状才会写进 RenderNode 的 outline，
+                    // 投影跟着 18dp 圆角走；只设 shadowElevation 不 clip 时投影仍是直角矩形。
+                    Modifier.shadow(elevation = 12.dp, shape = cardShape)
+                } else {
+                    Modifier
+                },
+            )
             .clip(cardShape)
             .background(
                 if (dragging) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceContainer,
