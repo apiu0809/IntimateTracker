@@ -413,6 +413,9 @@ private fun FilterSheet(
 ) {
     val filter = viewModel.filter
     val total = partners.size + 1
+    val light = PartnerColors.isLightTheme()
+    // 图例逐项对应已选条件；颜色与选项圆点、月历环色共用 forPartner，三处不会各画各的
+    val legend = filter.legendSwatches(partners, light)
 
     AppBottomSheet(
         title = stringResource(R.string.calendar_filter_title),
@@ -426,16 +429,13 @@ private fun FilterSheet(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 12.dp),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (filter.isActive) {
-                (listOfNotNull(
-                    if (filter.partnerIds.isNotEmpty()) PartnerColors.palette.first() else null,
-                    if (filter.onlySolo) PartnerColors.forPartner("", PartnerColors.isLightTheme()) else null,
-                )).forEach { color ->
+        if (legend.isNotEmpty()) {
+            FlowChips {
+                legend.forEach { swatch ->
                     Box(
                         Modifier
                             .size(16.dp)
-                            .background(color, RoundedCornerShape(4.dp)),
+                            .background(swatch.color, RoundedCornerShape(4.dp)),
                     )
                 }
             }
@@ -446,20 +446,22 @@ private fun FilterSheet(
             FilterChip(
                 selected = filter.onlySolo,
                 onClick = viewModel::toggleOnlySolo,
-                label = { Text(stringResource(R.string.calendar_filter_only_solo)) },
+                label = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        FilterDot(PartnerColors.forPartner(null, light))
+                        Spacer(Modifier.size(6.dp))
+                        Text(stringResource(R.string.calendar_filter_only_solo))
+                    }
+                },
             )
             partners.forEach { partner ->
-                val color = PartnerColors.forPartner(partner.id)
+                val color = PartnerColors.forPartner(partner.id, light)
                 FilterChip(
                     selected = partner.id in filter.partnerIds,
                     onClick = { viewModel.togglePartner(partner.id) },
                     label = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                Modifier
-                                    .size(10.dp)
-                                    .background(color, CircleShape),
-                            )
+                            FilterDot(color)
                             Spacer(Modifier.size(6.dp))
                             Text(partner.name)
                         }
@@ -468,6 +470,16 @@ private fun FilterSheet(
             }
         }
     }
+}
+
+/** 筛选选项前的颜色圆点：与顶部图例方块、月历环同色，写明「这个选项在日历上是什么颜色」。 */
+@Composable
+private fun FilterDot(color: Color) {
+    Box(
+        Modifier
+            .size(10.dp)
+            .background(color, CircleShape),
+    )
 }
 
 @Composable

@@ -1,6 +1,6 @@
 # TASK_STATE — Intimate Tracker
 
-> 快照时间：2026-10-25 05:18（Asia/Shanghai）
+> 快照时间：2026-10-30 09:40（Asia/Shanghai）
 > 用途：上下文告急时的交接文件；恢复工作请先读本文件，再读 `prd-v1.1.md`。
 
 ## 1. 任务目标
@@ -8,6 +8,7 @@
 按 `prd-v1.1.md` 实现 Android App「亲密记录 / Intimate Tracker」（Kotlin + Compose + Room + Hilt）。
 4 个 Sprint 均已于 2026-10-22 交付：**S1 骨架+数据层+字典/伴侣 → S2 记录表单+日历+历史 → S3 统计 9 页签 → S4 同步 v2+应用锁+导出**；
 当前版本 **v1.8.1**（versionCode 55，数据库 v4），2026-10-25 发布（tag `v1.8.1`）：修掉字典拖动时的直角投影（§2.14），只动 UI 层；60 项 JVM 单测全绿，仪器测试沿用 v1.7.0 的 82 项基线（未新增用例）。上一版 v1.8.0（versionCode 54）同日发布，三件事见 §2.10（主题引擎）、§2.11–2.12（节奏卡圆环与 1:1 版面）、§2.13（壁纸取色修复）。
+其后有一条**未发布**的修复：日历筛选的图例方块与下方选项对不上（§2.15，2026-10-30，JVM 单测 65 项全绿），版本号与 tag 尚未变动。
 
 已确认的四项产品决策：
 1. 范围裁剪：不做账号体系与增值模块，仅 WebDAV 文件同步
@@ -214,8 +215,20 @@ S4 已交付：WebDAV v2 同步（客户端/合并/设置页/测试）、应用�
 - 证据：`evidence/dict-drag-shadow-before.png`、`dict-drag-shadow-after.png`、`dict-drag-shadow-compare.png`
 - 发布：随 **v1.8.1**（versionCode 55，tag `v1.8.1`）发布；`CHANGELOG.md` / `更新日志.md` 已同步
 
-## 3. 剩余事项（2026-10-24 按代码核对后重写）
+## 2.15 修复日历筛选「图例方块 ↔ 下方选项」脱节（2026-10-30，未发布）
 
+- 现象（用户真机截图 1200×2670）：筛选面板「已选 2/3」只画 1 枚紫色方块；「已选 3/3」画 2 枚一模一样的紫色方块；下方「自慰」没有颜色圆点，而伴侣 3 / 4 的圆点是紫 / 红。方块数量既不等于已选数，颜色也不跟选项走
+- 根因（`CalendarScreen.kt` 的 `FilterSheet`）三处：
+  1. 伴侣那枚方块恒取 `PartnerColors.palette.first()`，与已选几个、选了谁无关 → 选 2 个伴侣也只有 1 枚、且颜色跟选项无关
+  2. 「自慰」把 `""` 传给 `forPartner`：`forPartner` 只判 `id == null`，空串走 `hashCode() % 5 == 0` → 取到 `palette[0]` 紫色；而月历里无伴侣记录画的是 `forPartner(null)` 的中性灰，两处不同色
+  3. 伴侣选项圆点调用 `forPartner(id)` 没传 `lightTheme`，浅色主题下与环色不同源
+- [x] 修法：新增 `FilterLegendSwatch` + `CalendarFilter.legendSwatches(partners, lightTheme)`，按「自慰 → 伴侣列表顺序」逐项生成（条数恒等于 `activeCount`），颜色统一走 `PartnerColors.forPartner`；`FilterSheet` 用 `FlowChips` 渲染图例（项多自动换行，不再固定 `Row`）；「自慰」选项补中性灰圆点、伴侣圆点补 `lightTheme`
+- 验证：模拟器 Pixel_10_Pro（1280×2856 / 480dpi / API 37）建 3 个伴侣（3/4/5）实测 —— 选「4 + 5」→ 2 枚方块（金 / 品红）；再选「自慰」→ 3 枚（灰 / 金 / 品红），与选项圆点、月历环色逐项一致
+- 回归：新增 `CalendarFilterLegendTest` 5 项（方块数 = 已选数、各伴侣独立取色、自慰为中性灰且不落入伴侣色板、顺序为自慰在前、深浅主题各取各的色板）；`testDebugUnitTest` 65 项全绿，`assembleDebug` 通过
+- 证据：`evidence/filter-legend/filter-legend-after.png`（含 `filter-legend-2-selected.png` / `filter-legend-3-selected.png`）
+- 已知同类现象（本次未改）：伴侣色由 `id.hashCode() % 5` 决定，5 色色板下不同伴侣可能撞同一颜色（本次模拟器里 3 和 4 都是金色）；改成按列表顺序取色会让颜色随排序 / 删除漂移，故暂不动
+
+## 3. 剩余事项（2026-10-24 按代码核对后重写）
 > 旧版本节停留在 S1 阶段。核对后确认已落地、可从待办移除的：S2/S3/S4 全部功能、伴侣头像（导入/中心裁切 512px/更换/移除）、
 > 简化输入（已改为记录表单内 `SimplifiedInputSheet`）、偏好设置、应用锁、WebDAV、导出/清空、Room v2 迁移、应用图标。
 >
